@@ -124,7 +124,7 @@ app.post('/api/auth/login', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login error:', error.message);
     res.status(401).json({ error: error.message });
   }
 });
@@ -256,7 +256,11 @@ app.post('/api/generate-reply', requireAuth, async (req, res) => {
 });
 
 // --- API Route to Send AI Message via SMS ---
+let eugeniaMessageCount = 0;
+
 app.post('/api/send-ai-message', requireAuth, async (req, res) => {
+  eugeniaMessageCount++;
+  console.log(`\n📨 EUGENIA MESSAGE SEND REQUEST #${eugeniaMessageCount} ========================`);
   // SAFETY CHECK: Prevent accidental SMS to production leads
   if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_PRODUCTION_SMS) {
     return res.status(403).json({ error: 'SMS disabled in production for lead safety' });
@@ -273,12 +277,39 @@ app.post('/api/send-ai-message', requireAuth, async (req, res) => {
   }
 
   try {
+    // Check if Eugenia is paused for this lead
+    let eugeniaStatus = 'active'; // Default to active
+    if (fubService) {
+      try {
+        const lead = await fubService.getLeadById(leadId);
+        const statusField = process.env.FUB_EUGENIA_TALKING_STATUS_FIELD_NAME || 'customEugeniaTalkingStatus';
+        eugeniaStatus = lead[statusField] || 'active';
+        console.log(`Eugenia status for lead ${leadId}: ${eugeniaStatus}`);
+      } catch (error) {
+        console.error('Failed to check Eugenia status:', error.message);
+      }
+    }
+    
+    // If Eugenia is paused, don't send the message
+    if (eugeniaStatus === 'inactive') {
+      console.log(`🚫 Cannot send message - Eugenia is paused for lead ${leadId}`);
+      return res.status(400).json({ 
+        error: 'Cannot send message - Eugenia is paused for this lead',
+        eugeniaPaused: true 
+      });
+    }
+    
     // Send SMS via Twilio
     const smsResult = await twilioService.sendSMS(leadPhoneNumber, message);
     
     // Log to FUB /textMessages endpoint if FUB service is available
     if (fubService) {
       try {
+        console.log(`📤 Logging outbound SMS to FUB for lead ${leadId}...`);
+        console.log(`   From: ${process.env.TWILIO_FROM_NUMBER}`);
+        console.log(`   To: ${leadPhoneNumber}`);
+        console.log(`   Message: "${message.substring(0, 50)}..."`);
+        
         const logResult = await fubService.logTextMessage(
           leadId, 
           message, 
@@ -288,14 +319,17 @@ app.post('/api/send-ai-message', requireAuth, async (req, res) => {
         );
         
         if (logResult.id === 'skipped') {
-          console.log(`Skipped FUB SMS logging for lead ${leadId}: ${logResult.reason}`);
+          console.log(`⚠️ Skipped FUB SMS logging for lead ${leadId}: ${logResult.reason}`);
         } else {
-          console.log(`Successfully logged outbound SMS to FUB for lead ${leadId}`);
+          console.log(`✅ Successfully logged outbound SMS to FUB for lead ${leadId} (FUB Message ID: ${logResult.id})`);
         }
       } catch (fubError) {
-        console.error('Failed to log SMS to FUB:', fubError.message);
+        console.error('❌ Failed to log SMS to FUB:', fubError.message);
+        console.error('FUB Error Details:', fubError.response?.data || fubError);
         // Continue even if FUB logging fails
       }
+    } else {
+      console.log('⚠️ FUB service not available - SMS not logged to FUB');
     }
     
     // TODO: Update Airtable backup
@@ -344,10 +378,23 @@ app.post('/api/log-incoming-message', requireAuth, async (req, res) => {
     
     // TODO: Update Airtable backup
     
-    // Generate AI response with FULL context if Gemini is available
+    // Check if Eugenia is paused for this lead
+    let eugeniaStatus = 'active'; // Default to active
+    if (fubService) {
+      try {
+        const lead = await fubService.getLeadById(leadId);
+        const statusField = process.env.FUB_EUGENIA_TALKING_STATUS_FIELD_NAME || 'customEugeniaTalkingStatus';
+        eugeniaStatus = lead[statusField] || 'active';
+        console.log(`Eugenia status for lead ${leadId}: ${eugeniaStatus}`);
+      } catch (error) {
+        console.error('Failed to check Eugenia status:', error.message);
+      }
+    }
+    
+    // Generate AI response with FULL context if Gemini is available AND Eugenia is active
     let aiMessage = null;
     let shouldAutoPause = false;
-    if (geminiService) {
+    if (geminiService && eugeniaStatus === 'active') {
       try {
         console.log(`🧠 Building complete context for lead ${leadId}...`);
         
@@ -386,6 +433,29 @@ app.post('/api/log-incoming-message', requireAuth, async (req, res) => {
         
         console.log(`🤖 Generated AI response: "${aiMessage.substring(0, 50)}..."`);
         
+        // AUTOMATICALLY log the AI response to FUB
+        if (aiMessage && fubService) {
+          try {
+            console.log(`📤 Auto-logging AI response to FUB for lead ${leadId}...`);
+            const logResult = await fubService.logTextMessage(
+              leadId,
+              aiMessage,
+              'outbound',
+              process.env.TWILIO_FROM_NUMBER,
+              leadPhoneNumber
+            );
+            
+            if (logResult.id === 'skipped') {
+              console.log(`⚠️ Skipped auto-logging AI response: ${logResult.reason}`);
+            } else {
+              console.log(`✅ Successfully auto-logged AI response to FUB (Message ID: ${logResult.id})`);
+            }
+          } catch (fubError) {
+            console.error('❌ Failed to auto-log AI response to FUB:', fubError.message);
+            // Continue even if logging fails
+          }
+        }
+        
         // Check if we should auto-pause
         if (shouldAutoPause && fubService) {
           try {
@@ -408,13 +478,18 @@ app.post('/api/log-incoming-message', requireAuth, async (req, res) => {
         aiMessage = result.message;
         shouldAutoPause = result.shouldAutoPause;
       }
+    } else if (eugeniaStatus === 'inactive') {
+      console.log(`🚫 Eugenia is paused for lead ${leadId}. No AI response generated.`);
     }
     
     res.json({ 
       success: true,
       aiMessage,
       shouldAutoPause,
-      message: 'Incoming message logged successfully'
+      eugeniaPaused: eugeniaStatus === 'inactive',
+      message: eugeniaStatus === 'inactive' 
+        ? 'Message logged. Eugenia is paused for this lead.' 
+        : 'Incoming message logged successfully'
     });
   } catch (error) {
     console.error('Error processing incoming message:', error);
@@ -470,6 +545,43 @@ app.post('/webhook/twilio-sms', express.raw({ type: 'application/x-www-form-urle
   }
 });
 
+// --- API Route to Get Lead Conversation History from FUB ---
+app.get('/api/leads/:id/conversation', requireAuth, async (req, res) => {
+  if (!conversationService) {
+    return res.status(503).json({ error: 'Conversation service not configured' });
+  }
+
+  const { id } = req.params;
+  
+  try {
+    console.log(`\n📱 FRONTEND REQUESTING CONVERSATION for lead ${id}...`);
+    
+    // Get lead name if possible
+    let leadName = null;
+    if (fubService) {
+      try {
+        const lead = await fubService.getLeadById(id);
+        leadName = lead.name || lead.firstName || 'Lead';
+        console.log(`   Lead name: ${leadName}`);
+      } catch (err) {
+        console.log('Could not fetch lead name');
+      }
+    }
+    
+    const history = await conversationService.fetchFullConversationHistory(id, leadName);
+    console.log(`   Returning ${history.length} messages to frontend`);
+    
+    res.json({ 
+      success: true, 
+      conversationHistory: history,
+      messageCount: history.length
+    });
+  } catch (error) {
+    console.error('Error fetching conversation history:', error);
+    res.status(500).json({ error: 'Failed to fetch conversation history' });
+  }
+});
+
 // --- API Routes for Lead CRUD ---
 app.post('/api/leads', requireAuth, async (req, res) => {
   if (!fubService) {
@@ -516,8 +628,22 @@ app.put('/api/leads/:id/status', requireAuth, async (req, res) => {
   }
 
   try {
+    // Update lead status
     await fubService.updateLeadStatus(id, status);
-    res.json({ success: true, message: 'Lead status updated successfully' });
+    
+    // Also update the Eugenia talking Status custom field based on the status
+    const eugeniaStatusField = process.env.FUB_EUGENIA_TALKING_STATUS_FIELD_NAME || 'customEugeniaTalkingStatus';
+    const isPaused = status.toLowerCase().includes('paused');
+    const fieldValue = isPaused ? 'inactive' : 'active';
+    
+    console.log(`Updating Eugenia talking Status for lead ${id} to: ${fieldValue}`);
+    await fubService.updateLeadCustomField(id, eugeniaStatusField, fieldValue);
+    
+    res.json({ 
+      success: true, 
+      message: 'Lead status updated successfully',
+      eugeniaStatus: fieldValue 
+    });
   } catch (error) {
     console.error('Error updating lead status:', error);
     res.status(500).json({ error: 'Failed to update lead status in FUB', details: error.message });

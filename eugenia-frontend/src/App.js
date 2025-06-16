@@ -9,7 +9,8 @@ import {
 import {
   fetchLeads, createLead, deleteLead, sendEugeniaMessage,
   logIncomingLeadReplyAndGetNext, initiateNewLeadProcessing,
-  generateInitialMessage, generateAIReply, updateLeadStatus
+  generateInitialMessage, generateAIReply, updateLeadStatus,
+  fetchLeadConversation
 } from './services/apiService';
 
 // Utilities
@@ -167,9 +168,15 @@ const App = ({ user, onLogout }) => {
       const newLastContacted = new Date().toISOString(); const newStatus = "AI Nurturing"; 
       setLeads(prevLeads => prevLeads.map(l => l.id === lead.id ? {...l, status: newStatus, lastContacted: newLastContacted} : l));
       if (selectedLead && selectedLead.id === lead.id) { setSelectedLead(prev => ({...prev, status: newStatus, lastContacted: newLastContacted})); }
-      handleSystemMessage('success', `${AI_SENDER_NAME}'s message sent request to backend.`); 
+      handleSystemMessage('success', `${AI_SENDER_NAME}'s message sent and logged to FUB.`); 
       setGeminiMessage(''); 
-    } catch (error) { handleSystemMessage('error', error.message || `Failed to send ${AI_SENDER_NAME}'s message.`); } 
+    } catch (error) { 
+      if (error.data && error.data.eugeniaPaused) {
+        handleSystemMessage('warning', `Cannot send - ${AI_SENDER_NAME} is paused for this lead. Resume to enable sending.`);
+      } else {
+        handleSystemMessage('error', error.message || `Failed to send ${AI_SENDER_NAME}'s message.`); 
+      }
+    } 
     finally { setIsSending(false); }
   };
   
@@ -186,12 +193,19 @@ const App = ({ user, onLogout }) => {
         leadId: selectedLead.id, leadName: selectedLead.name, message: replyText, 
         currentConversation: updatedHistory, leadPhoneNumber: selectedLead.phone 
       });
-      if (response && response.aiMessage) {
-        setGeminiMessage(response.aiMessage);
-        // Also add the AI response to conversation history
-        addMessageToConversation(selectedLead.id, AI_SENDER_NAME, response.aiMessage);
-        handleSystemMessage('success', `Lead reply logged. ${AI_SENDER_NAME} generated next message.`);
-      } else { handleSystemMessage('info', 'Lead reply logged, but no AI response generated.'); }
+      if (response) {
+        if (response.eugeniaPaused) {
+          setGeminiMessage('');
+          handleSystemMessage('warning', `Lead reply logged. ${AI_SENDER_NAME} is paused for this lead.`);
+        } else if (response.aiMessage) {
+          setGeminiMessage(response.aiMessage);
+          // Also add the AI response to conversation history
+          addMessageToConversation(selectedLead.id, AI_SENDER_NAME, response.aiMessage);
+          handleSystemMessage('success', `Lead reply logged. ${AI_SENDER_NAME} generated next message.`);
+        } else {
+          handleSystemMessage('info', 'Lead reply logged, but no AI response generated.');
+        }
+      }
       setLeadReply(''); 
     } catch (error) { handleSystemMessage('error', error.message || 'Failed to process lead reply.'); } 
     finally { setIsSending(false); }
@@ -209,12 +223,43 @@ const App = ({ user, onLogout }) => {
 
   const handleNewLeadInputChange = (field, value) => { setNewLeadData(prev => ({ ...prev, [field]: value })); };
   
-  const handleSelectLead = useCallback((lead) => { 
+  const handleSelectLead = useCallback(async (lead) => { 
     setSelectedLead(lead); setGeminiMessage(''); setLeadReply('');
-    if (lead.conversationHistory && lead.conversationHistory.length === 0) { handleNurtureWithGemini(lead, []); }
+    
+    // Fetch conversation history from FUB
+    try {
+      handleSystemMessage('info', 'Loading conversation history...');
+      const response = await fetchLeadConversation(lead.id);
+      
+      console.log('FUB conversation response:', response);
+      
+      if (response && response.conversationHistory) {
+        // Update the lead with FUB conversation history
+        const updatedLead = { ...lead, conversationHistory: response.conversationHistory };
+        setSelectedLead(updatedLead);
+        
+        // Update in leads array too
+        setLeads(prevLeads => prevLeads.map(l => 
+          l.id === lead.id ? updatedLead : l
+        ));
+        
+        handleSystemMessage('success', `Loaded ${response.messageCount} messages from FUB`);
+        
+        // Generate AI message if no history
+        if (response.conversationHistory.length === 0) { 
+          handleNurtureWithGemini(updatedLead, []); 
+        }
+      } else {
+        console.warn('No conversation history in response:', response);
+      }
+    } catch (error) {
+      console.error('Failed to load conversation history:', error);
+      handleSystemMessage('warning', 'Could not load FUB history, using local history');
+    }
+    
     // Update URL to reflect selected lead
     navigate(`/conversation/${lead.id}`);
-  }, [navigate, handleNurtureWithGemini]);
+  }, [navigate, handleNurtureWithGemini, handleSystemMessage]);
 
   const copyLeadMessageToClipboard = async (text) => { 
     try {

@@ -37,13 +37,19 @@ Last Updated: 2025-01-16
 ### Phase 1: Foundation & Infrastructure 🔴
 
 #### 1. Twilio Account Setup & Configuration
-- [ ] **Status: ⏳ Not Started**
+- [x] **Status: ✅ Completed (2025-01-16)**
 - **Tasks:**
-  - Set up Twilio account with user
-  - Purchase phone number for Eugenia
-  - Configure webhook URLs
-  - Test basic SMS sending/receiving
-  - Document credentials in .env template
+  - ✅ Set up Twilio account with user
+  - ✅ Purchase phone number for Eugenia (+18662981158)
+  - ⏳ Configure webhook URLs (pending deployment)
+  - ✅ Test basic SMS sending/receiving capability
+  - ✅ Document credentials in .env template
+- **Completed Notes:**
+  - Account Status: Active
+  - Phone Number: +18662981158 (SMS capable)
+  - TwilioService class tested and working
+  - Phone number formatting helper implemented
+  - Created TwilioDocs/ with comprehensive documentation
 - **Documentation Required:**
   - Add Twilio phone number and credentials to CLAUDE.md environment variables section
   - Update TODO.md with Twilio setup completion status
@@ -51,28 +57,38 @@ Last Updated: 2025-01-16
   - Add Twilio testing results to SAFETY.md
 
 #### 2. FUB Custom Field Setup
-- [ ] **Status: ⏳ Not Started**
+- [x] **Status: ✅ Completed (2025-01-16)**
 - **Tasks:**
-  - Add "Eugenia talking Status" custom field to FUB (options: "active" or "inactive")
-  - Add "Eugenia Conversation Link" custom field to FUB (URL to frontend conversation)
-  - Test field updates via API for both fields
-  - Document field names in CLAUDE.md
-- **Custom Fields Required:**
-  - **"Eugenia talking Status"**: Controls AI active/inactive state
-  - **"Eugenia Conversation Link"**: URL format `https://your-domain.com/conversation/{leadId}`
+  - ✅ Confirmed "Eugenia talking Status" field exists in FUB
+  - ✅ Confirmed "Aim Assist" field exists (using instead of "Eugenia Conversation Link")
+  - ✅ Tested field updates via API for both fields
+  - ✅ Documented field names in CLAUDE.md
+- **Custom Fields Discovered:**
+  - **"Eugenia talking Status"**: API name `customEugeniaTalkingStatus` (values: "active"/"inactive")
+  - **"Aim Assist"**: API name `customAimAssist` (stores conversation URL)
+- **Completed Notes:**
+  - FUB custom fields use camelCase with `custom` prefix in API
+  - Both fields tested successfully with Test Everitt (ID: 470)
+  - Created test scripts: `test-fub-service.js`, `verify-fields.js`
+  - Updated .env and CLAUDE.md with correct field names
 - **Documentation Required:**
-  - Add both custom field names to CLAUDE.md environment variables
-  - Update PRDs.md with field purposes and usage
-  - Record field testing results in SAFETY.md
-  - Update TODO.md with completion status
+  - ✅ Added both custom field names to CLAUDE.md environment variables
+  - ⏳ Update PRDs.md with field purposes and usage
+  - ⏳ Record field testing results in SAFETY.md
+  - ✅ Update TODO.md with completion status
 
 #### 3. Fix FUB Message Logging
-- [ ] **Status: ⏳ Not Started**
+- [x] **Status: ✅ Completed (2025-01-16)**
 - **Tasks:**
-  - Debug current textMessages endpoint implementation
-  - Fix phone number validation and E.164 formatting
-  - Test logging both inbound and outbound messages
-  - Verify messages appear in FUB native interface
+  - ✅ Debug current textMessages endpoint implementation
+  - ✅ Fix phone number validation and E.164 formatting
+  - ✅ Test logging both inbound and outbound messages
+  - ✅ Verify messages appear in FUB native interface
+- **Completed Notes:**
+  - Fixed phone number normalization for comparison
+  - Added isIncoming field to properly indicate message direction
+  - Fixed userId validation to handle non-numeric values
+  - Messages now display correctly in both Eugenia frontend and FUB
 - **Documentation Required:**
   - Document phone number formatting logic in CLAUDE.md
   - Update textMessages API usage in FUBdocs.md/textMessages.md

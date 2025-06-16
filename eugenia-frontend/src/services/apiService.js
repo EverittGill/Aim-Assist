@@ -115,3 +115,7 @@ export const generateAIReply = async (leadDetails, conversationHistory, agencyNa
 export const updateLeadStatus = async (leadId, status) => {
   return callBackendAPI(`/leads/${leadId}/status`, 'PUT', { status }, "Update Lead Status");
 };
+
+export const fetchLeadConversation = async (leadId) => {
+  return callBackendAPI(`/leads/${leadId}/conversation`, 'GET', null, "Fetch Lead Conversation");
+};

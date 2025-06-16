@@ -66,17 +66,17 @@ Create `.env` file in eugenia-backend/ with:
 FUB_API_KEY=
 FUB_X_SYSTEM=
 FUB_X_SYSTEM_KEY=
-FUB_EUGENIA_TALKING_STATUS_FIELD_NAME=eugenia_talking_status
-FUB_EUGENIA_CONVERSATION_LINK_FIELD_NAME=eugenia_conversation_link
+FUB_EUGENIA_TALKING_STATUS_FIELD_NAME=customEugeniaTalkingStatus
+FUB_EUGENIA_CONVERSATION_LINK_FIELD_NAME=customAimAssist
 FUB_USER_ID_FOR_AI=
 
 # AI Integration
 GEMINI_API_KEY=
 
 # SMS Integration (Twilio)
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-TWILIO_FROM_NUMBER=
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_FROM_NUMBER=+18662981158  # Eugenia's phone number
 
 # Database Integration (Airtable - future)
 AIRTABLE_API_KEY=
@@ -118,7 +118,7 @@ npm run lint
   - Falls back to frontend history if FUB fetch fails
   - WhatsApp-style UI for conversation display
 - **Authentication**: JWT-based with 7-day expiration for persistent login
-- **SMS Ready**: Twilio integration prepared but credentials not yet configured
+- **SMS Ready**: Twilio integration complete with phone number +18662981158
 
 ## Critical Context & Learnings
 
@@ -167,7 +167,24 @@ The entire reason for building this app is that Raiya Text ($400/month) doesn't 
 3. **Context Lost on Refresh**: Fixed by implementing proper FUB message fetching
 4. **AI Repeating Greetings**: Fixed by ensuring full context is passed to Gemini
 
+### FUB Custom Fields Configuration (CRITICAL)
+**Field Name Mapping (Verified 2025-01-16):**
+- Display Name: "Eugenia talking Status" → API Name: `customEugeniaTalkingStatus`
+- Display Name: "Aim Assist" → API Name: `customAimAssist`
+
+**Important Notes:**
+- FUB custom fields use camelCase with `custom` prefix in the API
+- Fields must be created in FUB UI before API updates will work
+- Use the exact API names shown above in code
+- Test scripts available: `test-fub-service.js`, `verify-fields.js`
+
 ### Hosting Configuration
 - Frontend: To be deployed on Vercel or similar
 - Backend: Digital Ocean App Platform (user's preference)
 - Database: FUB as primary, Airtable as future backup
+
+### Twilio Webhook Configuration
+Configure these URLs in Twilio Console for your phone number (+18662981158):
+- **Incoming SMS Webhook**: `https://your-domain.com/webhook/twilio-sms` (HTTP POST)
+- **Status Callback**: `https://your-domain.com/webhook/twilio-status` (optional)
+- **Local Testing**: Use ngrok to expose local server: `ngrok http 3001`

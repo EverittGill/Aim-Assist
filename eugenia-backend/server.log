@@ -1,5 +1,549 @@
+
+> eugenia-backend@1.0.0 start
+> node server.js
+
 Gemini service initialized successfully
-Twilio credentials not configured - SMS features will not work
+Twilio service initialized successfully
+FUB service initialized successfully
+Conversation service initialized successfully
+Auth service initialized successfully
+Eugenia Backend server is running on http://localhost:3001
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+Logging inbound SMS to FUB for lead 470: hey what house was I interested in?
+Successfully logged SMS to FUB: 3145
+Successfully logged inbound SMS to FUB for lead 470
+Eugenia status for lead 470: active
+🧠 Building complete context for lead 470...
+📥 Fetching FUB messages for lead 470...
+   URL: https://api.followupboss.com/v1/textMessages?personId=470&limit=500&sort=-created
+   FUB Response: 19 messages found
+   Sample message: {
+  "id": 3145,
+  "created": "2025-06-16T18:03:43Z",
+  "updated": "2025-06-16T18:03:43Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 470,
+  "name": "Test Everitt",
+  "firstName": "Test",
+  "lastName": "Everitt",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "hey what house was I interested in?",
+  "fromNumber": "7068184445",
+  "toNumber": "8662981158",
+  "sent": "2025-06-16T18:03:43Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 9,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Aim Assist"
+}
+Fetched 19 historical messages for lead 470
+📚 Using FUB history: 19 messages
+🎯 Final context: 19 messages for lead Test Everitt
+🤖 Generated AI response: "Hi Test!  We previously discussed 85031 Williston ..."
+📤 Auto-logging AI response to FUB for lead 470...
+Logging outbound SMS to FUB for lead 470: Hi Test!  We previously discussed 85031 Williston Court, priced at $475,000.  Anything else I can help you with today?
+Successfully logged SMS to FUB: 3146
+✅ Successfully auto-logged AI response to FUB (Message ID: 3146)
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+Logging inbound SMS to FUB for lead 470: what was the price on that?
+Successfully logged SMS to FUB: 3147
+Successfully logged inbound SMS to FUB for lead 470
+Eugenia status for lead 470: active
+🧠 Building complete context for lead 470...
+📥 Fetching FUB messages for lead 470...
+   URL: https://api.followupboss.com/v1/textMessages?personId=470&limit=500&sort=-created
+   FUB Response: 21 messages found
+   Sample message: {
+  "id": 3147,
+  "created": "2025-06-16T18:04:53Z",
+  "updated": "2025-06-16T18:04:53Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 470,
+  "name": "Test Everitt",
+  "firstName": "Test",
+  "lastName": "Everitt",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "what was the price on that?",
+  "fromNumber": "7068184445",
+  "toNumber": "8662981158",
+  "sent": "2025-06-16T18:04:53Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 9,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Aim Assist"
+}
+Fetched 21 historical messages for lead 470
+📚 Using FUB history: 21 messages
+🎯 Final context: 21 messages for lead Test Everitt
+🤖 Generated AI response: "Hi Test!  The price for 85031 Williston Court is $..."
+📤 Auto-logging AI response to FUB for lead 470...
+Logging outbound SMS to FUB for lead 470: Hi Test!  The price for 85031 Williston Court is $475,000.  Are you interested in scheduling a showing?
+Successfully logged SMS to FUB: 3148
+✅ Successfully auto-logged AI response to FUB (Message ID: 3148)
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+Logging inbound SMS to FUB for lead 470: hey what house was it?
+Successfully logged SMS to FUB: 3149
+Successfully logged inbound SMS to FUB for lead 470
+Eugenia status for lead 470: active
+🧠 Building complete context for lead 470...
+📥 Fetching FUB messages for lead 470...
+   URL: https://api.followupboss.com/v1/textMessages?personId=470&limit=500&sort=-created
+   FUB Response: 23 messages found
+   Sample message: {
+  "id": 3149,
+  "created": "2025-06-16T18:14:38Z",
+  "updated": "2025-06-16T18:14:38Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 470,
+  "name": "Test Everitt",
+  "firstName": "Test",
+  "lastName": "Everitt",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "hey what house was it?",
+  "fromNumber": "7068184445",
+  "toNumber": "8662981158",
+  "sent": "2025-06-16T18:14:38Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 9,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Aim Assist"
+}
+Fetched 23 historical messages for lead 470
+📚 Using FUB history: 23 messages
+🎯 Final context: 23 messages for lead Test Everitt
+🤖 Generated AI response: "Hi Test!  It was 85031 Williston Court, priced at ..."
+📤 Auto-logging AI response to FUB for lead 470...
+Logging outbound SMS to FUB for lead 470: Hi Test!  It was 85031 Williston Court, priced at $475,000.  Interested in seeing it?
+Successfully logged SMS to FUB: 3150
+✅ Successfully auto-logged AI response to FUB (Message ID: 3150)
+Logging inbound SMS to FUB for lead 470: I also want to learn about 758 harris St
+Successfully logged SMS to FUB: 3151
+Successfully logged inbound SMS to FUB for lead 470
+Eugenia status for lead 470: active
+🧠 Building complete context for lead 470...
+📥 Fetching FUB messages for lead 470...
+   URL: https://api.followupboss.com/v1/textMessages?personId=470&limit=500&sort=-created
+   FUB Response: 25 messages found
+   Sample message: {
+  "id": 3151,
+  "created": "2025-06-16T18:15:15Z",
+  "updated": "2025-06-16T18:15:15Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 470,
+  "name": "Test Everitt",
+  "firstName": "Test",
+  "lastName": "Everitt",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "I also want to learn about 758 harris St",
+  "fromNumber": "7068184445",
+  "toNumber": "8662981158",
+  "sent": "2025-06-16T18:15:15Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 9,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Aim Assist"
+}
+Fetched 25 historical messages for lead 470
+📚 Using FUB history: 25 messages
+🎯 Final context: 25 messages for lead Test Everitt
+🤖 Generated AI response: "Hi Test!  Okay, I can look into 758 Harris St for ..."
+📤 Auto-logging AI response to FUB for lead 470...
+Logging outbound SMS to FUB for lead 470: Hi Test!  Okay, I can look into 758 Harris St for you.  Do you have a price range in mind for that one too?
+Successfully logged SMS to FUB: 3152
+✅ Successfully auto-logged AI response to FUB (Message ID: 3152)
+Updating Eugenia talking Status for lead 470 to: inactive
+Logging inbound SMS to FUB for lead 470: It's in Madison GA
+Successfully logged SMS to FUB: 3153
+Successfully logged inbound SMS to FUB for lead 470
+Eugenia status for lead 470: active
+🧠 Building complete context for lead 470...
+📥 Fetching FUB messages for lead 470...
+   URL: https://api.followupboss.com/v1/textMessages?personId=470&limit=500&sort=-created
+   FUB Response: 27 messages found
+   Sample message: {
+  "id": 3153,
+  "created": "2025-06-16T18:15:26Z",
+  "updated": "2025-06-16T18:15:26Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 470,
+  "name": "Test Everitt",
+  "firstName": "Test",
+  "lastName": "Everitt",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "It's in Madison GA",
+  "fromNumber": "7068184445",
+  "toNumber": "8662981158",
+  "sent": "2025-06-16T18:15:26Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 9,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Aim Assist"
+}
+Fetched 27 historical messages for lead 470
+📚 Using FUB history: 27 messages
+🎯 Final context: 27 messages for lead Test Everitt
+🤖 Generated AI response: "Hi Test!  I'm checking on 758 Harris St in Madison..."
+📤 Auto-logging AI response to FUB for lead 470...
+Logging outbound SMS to FUB for lead 470: Hi Test!  I'm checking on 758 Harris St in Madison, GA.  To help me narrow down the search, could you give me a price range?
+Successfully logged SMS to FUB: 3154
+✅ Successfully auto-logged AI response to FUB (Message ID: 3154)
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+Fetching FUB conversation history for lead 473...
+📥 Fetching FUB messages for lead 473...
+   URL: https://api.followupboss.com/v1/textMessages?personId=473&limit=500&sort=-created
+   FUB Response: 0 messages found
+Fetched 0 historical messages for lead 473
+Fetching FUB conversation history for lead 472...
+📥 Fetching FUB messages for lead 472...
+   URL: https://api.followupboss.com/v1/textMessages?personId=472&limit=500&sort=-created
+   FUB Response: 1 messages found
+   Sample message: {
+  "id": 3090,
+  "created": "2025-06-13T23:43:34Z",
+  "updated": "2025-06-13T23:43:34Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 472,
+  "name": "Jaylen Wade",
+  "firstName": "Jaylen",
+  "lastName": "Wade",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "* Body is hidden for privacy reasons *",
+  "fromNumber": "9047479288",
+  "toNumber": "9043835816",
+  "sent": "2025-06-13T23:43:34Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 1,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Ylopo"
+}
+Fetched 1 historical messages for lead 472
+Fetching FUB conversation history for lead 471...
+📥 Fetching FUB messages for lead 471...
+   URL: https://api.followupboss.com/v1/textMessages?personId=471&limit=500&sort=-created
+   FUB Response: 2 messages found
+   Sample message: {
+  "id": 3091,
+  "created": "2025-06-14T12:41:49Z",
+  "updated": "2025-06-14T12:41:49Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 471,
+  "name": "Sarah J Stenholm",
+  "firstName": "Sarah",
+  "lastName": "J Stenholm",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "* Body is hidden for privacy reasons *",
+  "fromNumber": "9047479288",
+  "toNumber": "7862527481",
+  "sent": "2025-06-14T12:41:49Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 1,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Ylopo"
+}
+Fetched 2 historical messages for lead 471
+Fetching FUB conversation history for lead 469...
+📥 Fetching FUB messages for lead 469...
+   URL: https://api.followupboss.com/v1/textMessages?personId=469&limit=500&sort=-created
+   FUB Response: 5 messages found
+   Sample message: {
+  "id": 3109,
+  "created": "2025-06-16T13:52:03Z",
+  "updated": "2025-06-16T13:52:03Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 469,
+  "name": "Harold Newport",
+  "firstName": "Harold",
+  "lastName": "Newport",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "* Body is hidden for privacy reasons *",
+  "fromNumber": "9047479288",
+  "toNumber": "3524591931",
+  "sent": "2025-06-16T13:52:03Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 1,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Ylopo"
+}
+Fetched 5 historical messages for lead 469
+Fetching FUB conversation history for lead 470...
+📥 Fetching FUB messages for lead 470...
+   URL: https://api.followupboss.com/v1/textMessages?personId=470&limit=500&sort=-created
+   FUB Response: 28 messages found
+   Sample message: {
+  "id": 3154,
+  "created": "2025-06-16T18:15:27Z",
+  "updated": "2025-06-16T18:15:27Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 470,
+  "name": "Test Everitt",
+  "firstName": "Test",
+  "lastName": "Everitt",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "Hi Test!  I'm checking on 758 Harris St in Madison, GA.  To help me narrow down the search, could you give me a price range?",
+  "fromNumber": "8662981158",
+  "toNumber": "7068184445",
+  "sent": "2025-06-16T18:15:27Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 9,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Aim Assist"
+}
+Fetched 28 historical messages for lead 470
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+Logging inbound SMS to FUB for lead 470: hey
+Successfully logged SMS to FUB: 3155
+Successfully logged inbound SMS to FUB for lead 470
+Eugenia status for lead 470: active
+🧠 Building complete context for lead 470...
+📥 Fetching FUB messages for lead 470...
+   URL: https://api.followupboss.com/v1/textMessages?personId=470&limit=500&sort=-created
+   FUB Response: 29 messages found
+   Sample message: {
+  "id": 3155,
+  "created": "2025-06-16T18:21:22Z",
+  "updated": "2025-06-16T18:21:22Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 470,
+  "name": "Test Everitt",
+  "firstName": "Test",
+  "lastName": "Everitt",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "hey",
+  "fromNumber": "7068184445",
+  "toNumber": "8662981158",
+  "sent": "2025-06-16T18:21:22Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 9,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Aim Assist"
+}
+Fetched 29 historical messages for lead 470
+📚 Using FUB history: 29 messages
+🎯 Final context: 29 messages for lead Test Everitt
+🤖 Generated AI response: "Hi Test! Still looking into 758 Harris St in Madis..."
+📤 Auto-logging AI response to FUB for lead 470...
+Logging outbound SMS to FUB for lead 470: Hi Test! Still looking into 758 Harris St in Madison.  What's your budget for that property?
+Successfully logged SMS to FUB: 3156
+✅ Successfully auto-logged AI response to FUB (Message ID: 3156)
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+Successfully fetched 100 leads from FUB.
+Gemini service initialized successfully
+Twilio service initialized successfully
 FUB service initialized successfully
 Conversation service initialized successfully
 Auth service initialized successfully
@@ -8,17 +552,400 @@ GET /api/leads endpoint: Attempting to fetch real leads from FUB
 Successfully fetched 100 leads from FUB.
 GET /api/leads endpoint: Attempting to fetch real leads from FUB
 Successfully fetched 100 leads from FUB.
-Skipping FUB SMS logging for lead 470 - no valid toNumber available
-Skipped FUB SMS logging for lead 470: No valid phone number
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+Logging inbound SMS to FUB for lead 470: hello
+Successfully logged SMS to FUB: 3157
+Successfully logged inbound SMS to FUB for lead 470
+Eugenia status for lead 470: active
 🧠 Building complete context for lead 470...
-Fetched 0 historical messages for lead 470
-📱 Using frontend history: 1 messages (FUB empty)
-🎯 Final context: 1 messages for lead Test Everitt
-🤖 Generated AI response: "Hey Test!  Which house were you curious about? To ..."
-Skipping FUB SMS logging for lead 470 - no valid toNumber available
-Skipped FUB SMS logging for lead 470: No valid phone number
+📥 Fetching FUB messages for lead 470...
+   URL: https://api.followupboss.com/v1/textMessages?personId=470&limit=500&sort=-created
+   FUB Response: 31 messages found
+   Sample message: {
+  "id": 3157,
+  "created": "2025-06-16T18:45:53Z",
+  "updated": "2025-06-16T18:45:53Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 470,
+  "name": "Test Everitt",
+  "firstName": "Test",
+  "lastName": "Everitt",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "hello",
+  "fromNumber": "7068184445",
+  "toNumber": "8662981158",
+  "sent": "2025-06-16T18:45:53Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 9,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Aim Assist"
+}
+   Normalized Eugenia phone for comparison: 8662981158
+Fetched 31 historical messages for lead 470
+📚 Using FUB history: 31 messages
+🎯 Final context: 31 messages for lead Test Everitt
+🤖 Generated AI response: "Hi Test!  Still working on 758 Harris St.  To help..."
+📤 Auto-logging AI response to FUB for lead 470...
+Logging outbound SMS to FUB for lead 470: Hi Test!  Still working on 758 Harris St.  To help me find the right listing, what's your budget for that Madison property?
+Successfully logged SMS to FUB: 3158
+✅ Successfully auto-logged AI response to FUB (Message ID: 3158)
+Gemini service initialized successfully
+Twilio service initialized successfully
+FUB service initialized successfully
+Conversation service initialized successfully
+Auth service initialized successfully
+Eugenia Backend server is running on http://localhost:3001
+Gemini service initialized successfully
+Twilio service initialized successfully
+FUB service initialized successfully
+Conversation service initialized successfully
+Auth service initialized successfully
+Eugenia Backend server is running on http://localhost:3001
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+Logging inbound SMS to FUB for lead 470: hello
+Successfully logged SMS to FUB: 3162
+Successfully logged inbound SMS to FUB for lead 470
+Eugenia status for lead 470: active
 🧠 Building complete context for lead 470...
-Fetched 0 historical messages for lead 470
-📱 Using frontend history: 3 messages (FUB empty)
-🎯 Final context: 3 messages for lead Test Everitt
-🤖 Generated AI response: "Hey Test!  I'm looking up 85031 Williston Court fo..."
+📥 Fetching FUB messages for lead 470...
+   URL: https://api.followupboss.com/v1/textMessages?personId=470&limit=500&sort=-created
+   FUB Response: 36 messages found
+   Sample message: {
+  "id": 3162,
+  "created": "2025-06-16T18:53:05Z",
+  "updated": "2025-06-16T18:53:05Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 470,
+  "name": "Test Everitt",
+  "firstName": "Test",
+  "lastName": "Everitt",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Received",
+  "message": "hello",
+  "fromNumber": "7068184445",
+  "toNumber": "8662981158",
+  "sent": "2025-06-16T18:53:05Z",
+  "isIncoming": true,
+  "archived": false,
+  "read": false,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 9,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Aim Assist"
+}
+   Normalized Eugenia phone for comparison: 8662981158
+Fetched 36 historical messages for lead 470
+📚 Using FUB history: 36 messages
+🎯 Final context: 36 messages for lead Test Everitt
+🤖 Generated AI response: "Hi Test!  Still looking into 758 Harris St in Madi..."
+📤 Auto-logging AI response to FUB for lead 470...
+Logging outbound SMS to FUB for lead 470: Hi Test!  Still looking into 758 Harris St in Madison. What's your budget for that property?  Remember, we also discussed 85031 Williston Court at $475,000.
+Successfully logged SMS to FUB: 3163
+✅ Successfully auto-logged AI response to FUB (Message ID: 3163)
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+Successfully fetched 100 leads from FUB.
+
+📱 FRONTEND REQUESTING CONVERSATION for lead 469...
+   Lead name: Harold Newport
+📥 Fetching FUB messages for lead 469...
+   URL: https://api.followupboss.com/v1/textMessages?personId=469&limit=500&sort=-created
+   FUB Response: 5 messages found
+   Sample message: {
+  "id": 3109,
+  "created": "2025-06-16T13:52:03Z",
+  "updated": "2025-06-16T13:52:03Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 469,
+  "name": "Harold Newport",
+  "firstName": "Harold",
+  "lastName": "Newport",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "* Body is hidden for privacy reasons *",
+  "fromNumber": "9047479288",
+  "toNumber": "3524591931",
+  "sent": "2025-06-16T13:52:03Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 1,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Ylopo"
+}
+   Normalized Eugenia phone for comparison: 8662981158
+Fetched 5 historical messages for lead 469
+   Returning 5 messages to frontend
+
+📱 FRONTEND REQUESTING CONVERSATION for lead 470...
+   Lead name: Test Everitt
+📥 Fetching FUB messages for lead 470...
+   URL: https://api.followupboss.com/v1/textMessages?personId=470&limit=500&sort=-created
+   FUB Response: 37 messages found
+   Sample message: {
+  "id": 3163,
+  "created": "2025-06-16T18:53:07Z",
+  "updated": "2025-06-16T18:53:07Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 470,
+  "name": "Test Everitt",
+  "firstName": "Test",
+  "lastName": "Everitt",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "Hi Test!  Still looking into 758 Harris St in Madison. What's your budget for that property?  Remember, we also discussed 85031 Williston Court at $475,000.",
+  "fromNumber": "8662981158",
+  "toNumber": "7068184445",
+  "sent": "2025-06-16T18:53:07Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 9,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Aim Assist"
+}
+   Normalized Eugenia phone for comparison: 8662981158
+Fetched 37 historical messages for lead 470
+   Returning 37 messages to frontend
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+
+📱 FRONTEND REQUESTING CONVERSATION for lead 473...
+   Lead name: Renee
+📥 Fetching FUB messages for lead 473...
+   URL: https://api.followupboss.com/v1/textMessages?personId=473&limit=500&sort=-created
+   FUB Response: 0 messages found
+   Normalized Eugenia phone for comparison: 8662981158
+Fetched 0 historical messages for lead 473
+   Returning 0 messages to frontend
+
+📱 FRONTEND REQUESTING CONVERSATION for lead 470...
+   Lead name: Test Everitt
+📥 Fetching FUB messages for lead 470...
+   URL: https://api.followupboss.com/v1/textMessages?personId=470&limit=500&sort=-created
+   FUB Response: 37 messages found
+   Sample message: {
+  "id": 3163,
+  "created": "2025-06-16T18:53:07Z",
+  "updated": "2025-06-16T18:53:07Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 470,
+  "name": "Test Everitt",
+  "firstName": "Test",
+  "lastName": "Everitt",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "Hi Test!  Still looking into 758 Harris St in Madison. What's your budget for that property?  Remember, we also discussed 85031 Williston Court at $475,000.",
+  "fromNumber": "8662981158",
+  "toNumber": "7068184445",
+  "sent": "2025-06-16T18:53:07Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 9,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Aim Assist"
+}
+   Normalized Eugenia phone for comparison: 8662981158
+Fetched 37 historical messages for lead 470
+   Returning 37 messages to frontend
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+Successfully fetched 100 leads from FUB.
+Successfully fetched 100 leads from FUB.
+Successfully fetched 100 leads from FUB.
+
+📱 FRONTEND REQUESTING CONVERSATION for lead 473...
+   Lead name: Renee
+📥 Fetching FUB messages for lead 473...
+   URL: https://api.followupboss.com/v1/textMessages?personId=473&limit=500&sort=-created
+   FUB Response: 0 messages found
+   Normalized Eugenia phone for comparison: 8662981158
+Fetched 0 historical messages for lead 473
+   Returning 0 messages to frontend
+
+📱 FRONTEND REQUESTING CONVERSATION for lead 470...
+   Lead name: Test Everitt
+📥 Fetching FUB messages for lead 470...
+   URL: https://api.followupboss.com/v1/textMessages?personId=470&limit=500&sort=-created
+   FUB Response: 37 messages found
+   Sample message: {
+  "id": 3163,
+  "created": "2025-06-16T18:53:07Z",
+  "updated": "2025-06-16T18:53:07Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 470,
+  "name": "Test Everitt",
+  "firstName": "Test",
+  "lastName": "Everitt",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Sent",
+  "message": "Hi Test!  Still looking into 758 Harris St in Madison. What's your budget for that property?  Remember, we also discussed 85031 Williston Court at $475,000.",
+  "fromNumber": "8662981158",
+  "toNumber": "7068184445",
+  "sent": "2025-06-16T18:53:07Z",
+  "isIncoming": false,
+  "archived": true,
+  "read": true,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 9,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Aim Assist"
+}
+   Normalized Eugenia phone for comparison: 8662981158
+Fetched 37 historical messages for lead 470
+   Returning 37 messages to frontend
+Logging inbound SMS to FUB for lead 470: Actually can you see if Everitt can find us some 2/2s on the beach?
+Successfully logged SMS to FUB: 3164
+Successfully logged inbound SMS to FUB for lead 470
+Eugenia status for lead 470: active
+🧠 Building complete context for lead 470...
+📥 Fetching FUB messages for lead 470...
+   URL: https://api.followupboss.com/v1/textMessages?personId=470&limit=500&sort=-created
+   FUB Response: 38 messages found
+   Sample message: {
+  "id": 3164,
+  "created": "2025-06-16T19:02:10Z",
+  "updated": "2025-06-16T19:02:10Z",
+  "createdById": 1,
+  "updatedById": 1,
+  "personId": 470,
+  "name": "Test Everitt",
+  "firstName": "Test",
+  "lastName": "Everitt",
+  "picture": null,
+  "userId": 1,
+  "userName": "Everitt Gill",
+  "status": "Received",
+  "message": "Actually can you see if Everitt can find us some 2/2s on the beach?",
+  "fromNumber": "7068184445",
+  "toNumber": "8662981158",
+  "sent": "2025-06-16T19:02:10Z",
+  "isIncoming": true,
+  "archived": false,
+  "read": false,
+  "sharedInboxId": 0,
+  "actionPlanId": 0,
+  "leadFlowRouteId": null,
+  "groupTextId": null,
+  "isExternal": true,
+  "externalUrl": null,
+  "externalLabel": null,
+  "systemId": 9,
+  "deliveryStatus": null,
+  "deliveryStatusDate": null,
+  "deliveryStatusError": null,
+  "deliveryStatusErrorCode": null,
+  "media": [],
+  "systemName": "Aim Assist"
+}
+   Normalized Eugenia phone for comparison: 8662981158
+Fetched 38 historical messages for lead 470
+📚 Using FUB history: 38 messages
+🎯 Final context: 38 messages for lead Test Everitt
+🤖 Generated AI response: "Hi Test!  Sure, I can search for 2/2s on the beach..."
+📤 Auto-logging AI response to FUB for lead 470...
+Logging outbound SMS to FUB for lead 470: Hi Test!  Sure, I can search for 2/2s on the beach. To help me narrow it down, what's your price range and preferred location on the beach?  We were also looking at 758 Harris St in Madison & 85031 Williston Court.
+Successfully logged SMS to FUB: 3165
+✅ Successfully auto-logged AI response to FUB (Message ID: 3165)

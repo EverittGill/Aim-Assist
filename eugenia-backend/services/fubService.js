@@ -86,6 +86,28 @@ class FUBService {
     }
   }
 
+  async getLeadById(leadId) {
+    const url = `${this.baseUrl}/people/${leadId}`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`FUB API Error (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching lead from FUB:', error);
+      throw error;
+    }
+  }
+
   async logTextMessage(leadId, message, direction = 'outbound', fromNumber = null, toNumber = null) {
     const url = `${this.baseUrl}/textMessages`;
     
@@ -124,8 +146,13 @@ class FUBService {
     const payload = {
       personId: parseInt(leadId),
       message: message,
-      userId: this.userId ? parseInt(this.userId) : undefined
+      isIncoming: direction === 'inbound'  // Set based on direction
     };
+    
+    // Only add userId for outbound messages if it's a valid numeric ID
+    if (direction === 'outbound' && this.userId && !isNaN(parseInt(this.userId))) {
+      payload.userId = parseInt(this.userId);
+    }
     
     // Add phone numbers if valid
     if (finalFromNumber && this.isValidPhoneNumber(finalFromNumber)) {
@@ -196,10 +223,9 @@ class FUBService {
 
   async updateLeadCustomField(leadId, fieldName, value) {
     try {
+      // Custom fields go at the root level, not nested
       const updates = {
-        customFields: {
-          [fieldName]: value
-        }
+        [fieldName]: value
       };
       
       return await this.updateLead(leadId, updates);
