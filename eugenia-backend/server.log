@@ -1,2 +1,24 @@
-Gemini API key not configured - AI features will not work
+Gemini service initialized successfully
+Twilio credentials not configured - SMS features will not work
+FUB service initialized successfully
+Conversation service initialized successfully
+Auth service initialized successfully
 Eugenia Backend server is running on http://localhost:3001
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+Skipping FUB SMS logging for lead 470 - no valid toNumber available
+Skipped FUB SMS logging for lead 470: No valid phone number
+🧠 Building complete context for lead 470...
+Fetched 0 historical messages for lead 470
+📱 Using frontend history: 1 messages (FUB empty)
+🎯 Final context: 1 messages for lead Test Everitt
+🤖 Generated AI response: "Hey Test!  Which house were you curious about? To ..."
+Skipping FUB SMS logging for lead 470 - no valid toNumber available
+Skipped FUB SMS logging for lead 470: No valid phone number
+🧠 Building complete context for lead 470...
+Fetched 0 historical messages for lead 470
+📱 Using frontend history: 3 messages (FUB empty)
+🎯 Final context: 3 messages for lead Test Everitt
+🤖 Generated AI response: "Hey Test!  I'm looking up 85031 Williston Court fo..."

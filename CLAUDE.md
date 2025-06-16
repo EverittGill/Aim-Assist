@@ -66,7 +66,8 @@ Create `.env` file in eugenia-backend/ with:
 FUB_API_KEY=
 FUB_X_SYSTEM=
 FUB_X_SYSTEM_KEY=
-FUB_EUGENIA_LINK_CUSTOM_FIELD_NAME=
+FUB_EUGENIA_TALKING_STATUS_FIELD_NAME=eugenia_talking_status
+FUB_EUGENIA_CONVERSATION_LINK_FIELD_NAME=eugenia_conversation_link
 FUB_USER_ID_FOR_AI=
 
 # AI Integration

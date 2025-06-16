@@ -7,306 +7,394 @@ Each task includes:
 - Priority: 🔴 High | 🟡 Medium | 🟢 Low
 - Context notes for future development sessions
 
-Last Updated: 2025-01-13
+Last Updated: 2025-01-16
 
 ---
 
-## Frontend Tasks
+## COMPLETED FEATURES (Previous Work)
 
-### UI/UX Implementation
+### Frontend Completed ✅
+- **Create Navigation Bar** - Basic nav with "Aim Assist" title and settings button
+- **Lead List Display** - Shows lead name, status badge, source, tags, and last contacted time
+- **Selected Lead Details Panel** - Chat-style UI with message history
+- **Settings Panel** - Stores agency name in localStorage, shows backend config status
+- **Add Lead Modal** - Form to add new leads with name, email, phone, status, and notes
+- **URL-based Lead Navigation** - Routes: "/" and "/conversation/:leadId" with auto-selection
+- **AI Pause/Resume Controls** - Toggle button with Green/Yellow status indicators
+- **Fetch Leads from Backend** - Working `fetchLeads()` function from `/api/leads`
+- **Remove Gemini API Key from Frontend** - Moved to backend for security
 
-- [x] **Create Navigation Bar** 🟢
-  - Status: ✅ Completed
-  - File: `eugenia-frontend/src/components/NavBar.js`
-  - Notes: Basic nav with "Aim Assist" title and settings button. Ready for future nav items.
-
-- [x] **Lead List Display** 🟢
-  - Status: ✅ Completed
-  - File: `eugenia-frontend/src/components/LeadItem.js`
-  - Notes: Shows lead name, status badge, source, tags, and last contacted time. Click to select.
-
-- [x] **Selected Lead Details Panel** 🟢
-  - Status: ✅ Completed
-  - File: `eugenia-frontend/src/components/SelectedLeadDetails.js`
-  - Notes: Chat-style UI with message history, AI/lead message differentiation, manual message input.
-
-- [x] **Settings Panel** 🟢
-  - Status: ✅ Completed
-  - File: `eugenia-frontend/src/components/SettingsPanel.js`
-  - Notes: Stores Gemini API key and agency name in localStorage. Shows backend config status.
-
-- [x] **Add Lead Modal** 🟢
-  - Status: ✅ Completed
-  - File: `eugenia-frontend/src/components/AddLeadModal.js`
-  - Notes: Form to add new leads with name, email, phone, status, and notes.
-
-- [ ] **Migrate to Reactbits Components** 🟡
-  - Status: ⏳ Not Started
-  - Notes: PRD specifies using prebuilt components from reactbits.dev. Need to:
-    1. Install Reactbits package
-    2. Replace current components with Reactbits equivalents
-    3. Maintain simple, elegant UI with muted colors
-
-- [x] **Implement URL-based Lead Navigation** 🔴
-  - Status: ✅ Completed (2025-01-13)
-  - Notes: 
-    - Installed react-router-dom
-    - Created AppWithRouter component with routes: "/" and "/conversation/:leadId"
-    - Added useParams and useNavigate hooks for URL handling
-    - Auto-selects lead when accessing direct URLs
-    - Navigates to home if lead ID doesn't exist
-    - Refactored App.js to use LeadManagementView component (under 300 lines rule)
-    - Fixed eslint warnings in components
-
-- [x] **Add AI Pause/Resume Controls** 🔴
-  - Status: ✅ Completed (2025-01-13)
-  - Notes: 
-    - Enhanced SelectedLeadDetails component with AI status display
-    - Added pause/resume toggle button with icons (Play/Pause)
-    - AI status determined from lead status or tags containing "paused"
-    - handleToggleAIPause function updates lead status locally
-    - Visual indicators: Green for Active, Yellow for Paused
-    - Integrated with existing action progress states
-    - Ready for backend FUB API integration (marked with TODO)
-
-### Frontend API Integration
-
-- [x] **Fetch Leads from Backend** 🟢
-  - Status: ✅ Completed
-  - File: `eugenia-frontend/src/services/apiService.js`
-  - Notes: `fetchLeads()` function working, fetches from backend `/api/leads`
-
-- [ ] **Create Lead API Integration** 🔴
-  - Status: ⏳ Not Started
-  - File: `eugenia-frontend/src/services/apiService.js`
-  - Notes: `createLead()` function exists but backend endpoint not implemented
-
-- [ ] **Delete Lead API Integration** 🔴
-  - Status: ⏳ Not Started
-  - File: `eugenia-frontend/src/services/apiService.js`
-  - Notes: `deleteLead()` function exists but backend endpoint not implemented
-
-- [ ] **Send AI Message API Integration** 🔴
-  - Status: ⏳ Not Started
-  - Notes: Move Gemini API calls from frontend to backend for security
-
-- [ ] **Log Incoming Message API Integration** 🔴
-  - Status: ⏳ Not Started
-  - Notes: Handle incoming SMS webhook data display
-
-### Security & Architecture
-
-- [x] **Remove Gemini API Key from Frontend** 🔴
-  - Status: ✅ Completed (2025-01-13)
-  - Notes: 
-    - Moved Gemini API integration to backend with new endpoints:
-      - POST /api/generate-initial-message
-      - POST /api/generate-reply
-    - Created GeminiService class in backend/services/geminiService.js
-    - Removed geminiApiKey from frontend state and localStorage
-    - Updated SettingsPanel to only show agency name configuration
-    - Frontend now passes agency name with API requests
-    - Backend uses Gemini API key from .env file
-    - Includes auto-pause detection for keywords like "schedule a call", "stop", etc.
+### Backend Completed ✅
+- **GET /api/leads** - Fetches up to 25 leads from FUB with custom fields and tags
+- **Twilio Integration Setup** - TwilioService class with SMS sending and webhook validation
+- **Gemini Integration** - GeminiService with auto-pause detection
+- **Authentication System** - JWT-based auth with 7-day expiration
 
 ---
 
-## Backend Tasks
+## MVP IMPLEMENTATION PLAN
 
-### Core API Endpoints
+### Phase 1: Foundation & Infrastructure 🔴
 
-- [x] **GET /api/leads - Fetch Leads from FUB** 🟢
-  - Status: ✅ Completed
-  - File: `eugenia-backend/server.js` (lines 20-104)
-  - Notes: Fetches up to 25 leads, transforms FUB data, includes custom fields and tags
+#### 1. Twilio Account Setup & Configuration
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Set up Twilio account with user
+  - Purchase phone number for Eugenia
+  - Configure webhook URLs
+  - Test basic SMS sending/receiving
+  - Document credentials in .env template
+- **Documentation Required:**
+  - Add Twilio phone number and credentials to CLAUDE.md environment variables section
+  - Update TODO.md with Twilio setup completion status
+  - Record webhook URL format in CLAUDE.md
+  - Add Twilio testing results to SAFETY.md
 
-- [ ] **POST /api/leads - Create Lead in FUB** 🔴
-  - Status: ⏳ Not Started
-  - Notes: Need to implement FUB POST to /people endpoint
-  - Include custom field for Eugenia conversation URL
+#### 2. FUB Custom Field Setup
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Add "Eugenia talking Status" custom field to FUB (options: "active" or "inactive")
+  - Add "Eugenia Conversation Link" custom field to FUB (URL to frontend conversation)
+  - Test field updates via API for both fields
+  - Document field names in CLAUDE.md
+- **Custom Fields Required:**
+  - **"Eugenia talking Status"**: Controls AI active/inactive state
+  - **"Eugenia Conversation Link"**: URL format `https://your-domain.com/conversation/{leadId}`
+- **Documentation Required:**
+  - Add both custom field names to CLAUDE.md environment variables
+  - Update PRDs.md with field purposes and usage
+  - Record field testing results in SAFETY.md
+  - Update TODO.md with completion status
 
-- [ ] **DELETE /api/leads/:id - Delete Lead from FUB** 🔴
-  - Status: ⏳ Not Started
-  - Notes: Implement FUB DELETE to /people/:id endpoint
+#### 3. Fix FUB Message Logging
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Debug current textMessages endpoint implementation
+  - Fix phone number validation and E.164 formatting
+  - Test logging both inbound and outbound messages
+  - Verify messages appear in FUB native interface
+- **Documentation Required:**
+  - Document phone number formatting logic in CLAUDE.md
+  - Update textMessages API usage in FUBdocs.md/textMessages.md
+  - Record testing protocols in SAFETY.md (Test Everitt only)
+  - Add any discovered issues and solutions to CLAUDE.md "Common Issues & Solutions"
+  - Update TODO.md with implementation status
 
-- [ ] **POST /api/send-ai-message - Send SMS via Twilio** 🔴
-  - Status: ⏳ Not Started
-  - Notes: 
-    1. Install Twilio SDK
-    2. Send SMS via Twilio
-    3. Log to FUB /textMessages endpoint
-    4. Update Airtable backup
-    5. Return success/error to frontend
+#### 4. Phone Number to Lead Matching
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Implement phone lookup in FUB people endpoint
+  - Handle multiple phone formats and normalization
+  - Create fallback logic for unmatched numbers
+  - Test with Test Everitt (ID: 470)
+- **Documentation Required:**
+  - Add phone matching logic to CLAUDE.md
+  - Document fallback procedures in RULES.md
+  - Record testing scenarios in SAFETY.md
+  - Update TODO.md with completion notes
 
-- [ ] **POST /api/log-incoming-message - Process Incoming SMS** 🔴
-  - Status: ⏳ Not Started
-  - Notes:
-    1. Receive lead phone and message
-    2. Look up lead in FUB
-    3. Log to FUB /textMessages
-    4. Generate AI response via Gemini
-    5. Check for auto-pause keywords
-    6. Send response if not paused
+### Phase 2: Core Messaging Loop 🔴
 
-- [ ] **POST /api/initiate-ai-outreach - Process New Leads** 🔴
-  - Status: ⏳ Not Started
-  - Notes:
-    1. Identify new leads without Eugenia URL
-    2. Generate initial message via Gemini
-    3. Send via Twilio
-    4. Generate unique URL
-    5. Update FUB custom field with URL
-    6. Log everything
+#### 5. Complete Twilio Integration
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Implement webhook signature verification
+  - Complete incoming SMS webhook handler
+  - Add 45-second delay for natural response timing
+  - Test end-to-end SMS flow
+- **Documentation Required:**
+  - Add webhook security details to CLAUDE.md
+  - Document 45-second delay rationale in PRDs.md
+  - Record webhook testing results in SAFETY.md
+  - Update TODO.md with Twilio integration status
 
-- [ ] **POST /webhook/twilio-sms - Twilio Webhook** 🔴
-  - Status: ⏳ Not Started
-  - Notes:
-    1. Validate Twilio signature for security
-    2. Extract message data
-    3. Call /api/log-incoming-message internally
+#### 6. Context Fetching System
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Implement complete conversation history retrieval from FUB
+  - Handle pagination for leads with 100+ messages
+  - Create context formatting for AI consumption
+  - Test with various conversation lengths
+- **Documentation Required:**
+  - Update conversations.md in FUBdocs.md/ with implementation details
+  - Add context limits and pagination logic to CLAUDE.md
+  - Document context formatting approach in PRDs.md
+  - Record testing results with different message volumes in SAFETY.md
+  - Update TODO.md with context system status
 
-### Third-Party Integrations
+#### 7. AI Response Generation Enhancement
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Create ISA-specific prompt template
+  - Implement conversation context integration
+  - Add lead name personalization
+  - Test response quality and consistency
+- **Documentation Required:**
+  - Add prompt template to CLAUDE.md or create separate prompts.md file
+  - Document personalization logic in PRDs.md
+  - Record response quality testing in SAFETY.md
+  - Add prompt configuration instructions to RULES.md
+  - Update TODO.md with AI enhancement status
 
-- [ ] **Complete FUB Integration** 🔴
-  - Status: ⏳ Not Started
-  - Notes: Need to implement:
-    - Update lead status/tags (PUT /people/:id)
-    - Log to texting UI (POST /textMessages)
-    - Update custom fields for Eugenia URL
-    - Handle rate limits and errors
+#### 8. Complete Message Loop Testing
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Test: Incoming SMS → Context Fetch → AI Response → FUB Logging
+  - Verify all messages appear correctly in FUB
+  - Test with multiple conversation scenarios
+- **Documentation Required:**
+  - Create comprehensive test results section in SAFETY.md
+  - Update CLAUDE.md with complete message flow documentation
+  - Record any edge cases discovered in RULES.md
+  - Update TODO.md with testing completion status
 
-- [x] **Twilio Integration** 🔴
-  - Status: ✅ Completed (2025-01-13)
-  - Notes:
-    - Installed twilio package
-    - Created TwilioService class in backend/services/twilioService.js
-    - Added SMS sending functionality with error handling
-    - Implemented webhook signature validation methods
-    - Added Twilio webhook endpoint: POST /webhook/twilio-sms
-    - Added API endpoints:
-      - POST /api/send-ai-message (sends SMS via Twilio)
-      - Enhanced /api/log-incoming-message for SMS processing
-    - Server automatically initializes Twilio if credentials are configured
+### Phase 3: Lead Discovery & Initiation 🔴
 
-- [ ] **Move Gemini Integration to Backend** 🔴
-  - Status: ⏳ Not Started
-  - Notes:
-    1. Install @google/generative-ai package
-    2. Create Gemini service module
-    3. Implement prompt engineering for ISA personality
-    4. Add auto-pause detection logic
+#### 9. New Lead Detection System
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Implement FUB lead scanning for tags "Direct connect" or "PPC"
+  - Create lead eligibility checking (no previous contact)
+  - Add custom field tracking for AI status
+  - Test lead discovery logic
+- **Documentation Required:**
+  - Add lead detection criteria to RULES.md
+  - Document tag-based filtering in CLAUDE.md
+  - Record eligibility logic in PRDs.md
+  - Add testing scenarios to SAFETY.md
+  - Update TODO.md with detection system status
 
-- [ ] **Airtable Integration** 🔴
-  - Status: ⏳ Not Started
-  - Notes:
-    1. Install airtable package
-    2. Create Leads table structure
-    3. Create Messages table structure
-    4. Implement backup logging functions
-    5. Handle Airtable API limits
+#### 10. Initial Outreach Logic
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Create first message generation for new leads
+  - Implement lead phone number retrieval
+  - Generate conversation URL for new leads
+  - Update FUB "Eugenia talking Status" field to "active"
+  - Update FUB "Eugenia Conversation Link" field with generated URL
+  - Test initial outreach flow with link generation
+- **URL Generation Logic:**
+  - Format: `https://{APP_DOMAIN}/conversation/{leadId}`
+  - Must be clickable from FUB interface
+  - Links directly to frontend conversation view
+- **Documentation Required:**
+  - Add initial outreach template to CLAUDE.md or prompts.md
+  - Document lead phone retrieval logic in CLAUDE.md
+  - Document URL generation and custom field update logic in CLAUDE.md
+  - Record outreach testing results in SAFETY.md
+  - Update PRDs.md with outreach workflow
+  - Update TODO.md with outreach implementation status
 
-### Automation & State Management
+#### 11. Lead State Management
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Implement Eugenia talking Status field updates
+  - Create pause/resume functionality
+  - Add frontend controls for manual override
+  - Test state persistence
+- **Documentation Required:**
+  - Document state management logic in CLAUDE.md
+  - Add pause/resume business rules to RULES.md
+  - Record state testing scenarios in SAFETY.md
+  - Update PRDs.md with frontend control specifications
+  - Update TODO.md with state management status
 
-- [ ] **Lead State Management System** 🔴
-  - Status: ⏳ Not Started
-  - Notes: Track AI status (Active/Paused) per lead
-  - Store in FUB custom fields or tags
+#### 10.5. Conversation Link System
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Implement conversation URL generation function
+  - Create FUB custom field update logic for conversation links
+  - Test link generation and field updates
+  - Verify links work correctly in FUB interface
+  - Test clicking from FUB → Frontend navigation
+- **Technical Requirements:**
+  - URL Format: `https://{APP_DOMAIN}/conversation/{leadId}`
+  - Custom Field: "Eugenia Conversation Link"
+  - Must update immediately after lead detection
+  - Links must be clickable and functional
+- **Documentation Required:**
+  - Document URL generation logic in CLAUDE.md
+  - Add conversation link workflow to PRDs.md
+  - Record link testing scenarios in SAFETY.md
+  - Update TODO.md with link system status
 
-- [ ] **New Lead Engagement Automation** 🔴
-  - Status: ⏳ Not Started
-  - Notes: Can be manual trigger initially, add cron job later
+#### 12. Automated Lead Processing
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Create scheduled job for new lead checking
+  - Implement batch processing for multiple new leads
+  - Add error handling for failed outreach
+  - Test automation with test data
+- **Documentation Required:**
+  - Add automation schedule details to CLAUDE.md
+  - Document batch processing limits in RULES.md
+  - Record automation testing in SAFETY.md
+  - Update PRDs.md with automation specifications
+  - Update TODO.md with automation status
 
-- [ ] **Auto-Pause Logic Implementation** 🔴
-  - Status: ⏳ Not Started
-  - Notes: Detect keywords like "yes, call me", "stop", "unsubscribe"
-  - Update lead status automatically
+### Phase 4: Escalation & Human Handoff 🔴
 
-### Security & Infrastructure
+#### 13. Escalation Detection System
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Implement keyword detection ("call me", "schedule showing", etc.)
+  - Add 3-message conversation limit tracking
+  - Create specific question detection
+  - Test escalation triggers
+- **Escalation Keywords:** "call me", "schedule showing", "talk to agent", "speak to someone", "human", "stop", "unsubscribe"
+- **Personal Phone for Alerts:** +17068184445
+- **Email for Alerts:** sellitwitheveritt@gmail.com
+- **Documentation Required:**
+  - Add complete escalation keyword list to RULES.md
+  - Document message counting logic in CLAUDE.md
+  - Record escalation testing scenarios in SAFETY.md
+  - Update PRDs.md with escalation specifications
+  - Update TODO.md with escalation system status
 
-- [ ] **Add Request Validation** 🟡
-  - Status: ⏳ Not Started
-  - Notes: Validate all incoming requests, sanitize inputs
+#### 14. Notification System
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Implement SMS alerts to +17068184445
+  - Add email notifications to sellitwitheveritt@gmail.com
+  - Create urgency level classification
+  - Test notification delivery
+- **Documentation Required:**
+  - Add notification contact details to CLAUDE.md
+  - Document urgency classification in RULES.md
+  - Record notification testing in SAFETY.md
+  - Update PRDs.md with notification specifications
+  - Update TODO.md with notification system status
 
-- [ ] **Implement Rate Limiting** 🟡
-  - Status: ⏳ Not Started
-  - Notes: Protect API endpoints from abuse
+#### 15. Frontend Manual Messaging
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Implement "Send as Eugenia" functionality
+  - Connect to Twilio service for outbound messages
+  - Ensure proper FUB logging of manual messages
+  - Test manual override capabilities
+- **Documentation Required:**
+  - Document manual messaging feature in PRDs.md
+  - Add frontend API endpoints to CLAUDE.md
+  - Record manual messaging testing in SAFETY.md
+  - Update TODO.md with frontend messaging status
 
-- [ ] **Add Basic Authentication** 🔴
-  - Status: ⏳ Not Started
-  - Notes: Simple auth for frontend access (can be basic auth initially)
+#### 16. Error Handling & Recovery
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Implement API failure detection and retry logic
+  - Add fallback systems for service outages
+  - Create error notification system
+  - Test failure scenarios
+- **Documentation Required:**
+  - Add comprehensive error handling to CLAUDE.md "Common Issues & Solutions"
+  - Document retry logic and timeouts in RULES.md
+  - Record failure testing scenarios in SAFETY.md
+  - Update TODO.md with error handling status
+
+### Phase 5: Testing & Documentation 🟡
+
+#### 17. Comprehensive System Testing
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - End-to-end testing with Test Everitt (ID: 470)
+  - Test all escalation scenarios
+  - Verify FUB integration completeness
+  - Test error recovery systems
+- **Documentation Required:**
+  - Create comprehensive test results in SAFETY.md
+  - Update CLAUDE.md with final system architecture
+  - Document all test scenarios in SAFETY.md
+  - Update TODO.md with final testing status
+
+#### 18. Security & Production Readiness
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Implement webhook signature verification
+  - Add request validation and sanitization
+  - Test with production-like data volumes
+  - Security audit of sensitive data handling
+- **Documentation Required:**
+  - Add security measures to SAFETY.md
+  - Document production requirements in CLAUDE.md
+  - Record security testing in SAFETY.md
+  - Update TODO.md with security implementation status
+
+#### 19. Documentation Updates
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Complete CLAUDE.md with all new features
+  - Update PRDs.md with implemented functionality
+  - Finalize RULES.md with business logic
+  - Update SAFETY.md with safety protocols
+- **Documentation Required:**
+  - Comprehensive review of all documentation files
+  - Cross-reference implementation with original requirements
+  - Add any missing context or learnings
+  - Create final implementation summary in TODO.md
+
+#### 20. Production Deployment Preparation
+- [ ] **Status: ⏳ Not Started**
+- **Tasks:**
+  - Environment variable documentation
+  - Deployment configuration for Digital Ocean
+  - Monitoring and logging setup
+  - Backup and recovery procedures
+- **Documentation Required:**
+  - Add complete deployment guide to CLAUDE.md
+  - Document production environment setup in DEPLOYMENT.md
+  - Add monitoring requirements to CLAUDE.md
+  - Update TODO.md with deployment readiness checklist
 
 ---
 
-## Deployment & DevOps
+## Future Features (Post-MVP)
 
-- [ ] **Frontend Deployment Setup** 🟡
-  - Status: ⏳ Not Started
-  - Platform: Netlify or Vercel
-  - Notes: Set up CI/CD, environment variables
-
-- [ ] **Backend Deployment Setup** 🟡
-  - Status: ⏳ Not Started
-  - Platform: Render or Heroku
-  - Notes: Configure environment variables, set up logging
-
-- [ ] **Domain & SSL Setup** 🟡
-  - Status: ⏳ Not Started
-  - Notes: Configure custom domain for unique lead URLs
-
----
-
-## Testing & Documentation
-
-- [ ] **API Endpoint Testing** 🟡
-  - Status: ⏳ Not Started
-  - Notes: Add Jest tests for all endpoints
-
-- [ ] **Update CLAUDE.md with New Features** 🟢
-  - Status: ⏳ Not Started
-  - Notes: Document new endpoints, integrations as they're built
-
-- [ ] **Create User Documentation** 🟢
-  - Status: ⏳ Not Started
-  - Notes: How to use the system, webhook setup, etc.
+### Phase 2 Features 🟢
+- **Action Plan tabs** for lead management
+- **Lead source-specific automation**
+- **Property interest integration**
+- **Previous notes integration**
+- **Timeline and urgency tracking**
+- **Bulk lead AI enable/disable**
+- **Conversation analytics**
+- **Daily activity summaries**
+- **AI Voice Calling** - Twilio Voice integration
+- **Multi-User Support** - User accounts, isolated data
+- **Analytics Dashboard** - Engagement metrics, success rates
+- **Advanced Nurturing Sequences** - Complex drip campaigns
 
 ---
 
-## Phase 2 Features (Post-MVP)
+## Key Requirements Summary
 
-- [ ] **AI Voice Calling** 🟢
-  - Status: ⏳ Not Started
-  - Notes: Twilio Voice integration
+### Core MVP Flow:
+1. **New leads** with tags "Direct connect" or "PPC" automatically get first AI message
+2. **Conversation URL generated** and stored in FUB custom field for easy access
+3. **AI responds** to incoming SMS with full FUB conversation context
+4. **All messages logged** to FUB for native interface visibility
+5. **AI escalates** to human when appropriate (keywords, 3+ messages, specific questions)
+6. **Notifications sent** to +17068184445 (SMS) and sellitwitheveritt@gmail.com (email)
+7. **Manual messaging** capability from frontend as Eugenia
+8. **Seamless navigation** from FUB lead → Frontend conversation via clickable link
 
-- [ ] **Multi-User Support** 🟢
-  - Status: ⏳ Not Started
-  - Notes: User accounts, isolated data
+### Testing Protocol:
+- **ONLY use Test Everitt (ID: 470)** for all testing
+- Test Everitt uses personal phone number +17068184445
+- Never test with production leads
 
-- [ ] **Analytics Dashboard** 🟢
-  - Status: ⏳ Not Started
-  - Notes: Engagement metrics, success rates
+### Custom Fields:
+- **"Eugenia talking Status"**: "active" or "inactive" (controls AI state)
+- **"Eugenia Conversation Link"**: URL to frontend conversation view
 
-- [ ] **Advanced Nurturing Sequences** 🟢
-  - Status: ⏳ Not Started
-  - Notes: Complex drip campaigns
-
----
-
-## Next Steps Priority Order
-
-1. **Backend Security**: Move Gemini API to backend
-2. **URL Routing**: Implement `/conversation/[FUB_LEAD_ID]` navigation
-3. **Twilio Integration**: Set up SMS sending/receiving
-4. **FUB Communication Logging**: Implement /textMessages logging
-5. **AI Pause Controls**: Add pause/resume functionality
-6. **Airtable Backup**: Implement backup logging
-7. **Reactbits Migration**: Update UI components
-8. **Deployment**: Set up production environment
+### Documentation Standards:
+- Technical details → CLAUDE.md
+- Business rules → RULES.md
+- User requirements → PRDs.md
+- Testing protocols → SAFETY.md
+- Implementation status → TODO.md
 
 ---
 
-## Development Notes
+## Current Priority: Phase 1 - Foundation & Infrastructure
 
-- Always test with real FUB sandbox account before production
-- Maintain backward compatibility with existing lead data
-- Focus on reliability over features for MVP
-- Keep UI simple and elegant per PRD requirements
+**Next Step: Begin with Twilio Account Setup & Configuration**
