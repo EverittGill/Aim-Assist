@@ -92,7 +92,7 @@ const LoginForm = ({ onLogin, isLoading, error }) => {
           </form>
 
           <div className="mt-6 text-center text-xs text-warm-600">
-            <p>Demo credentials: admin@eugenia.app / admin123</p>
+            <p>Demo credentials: admin@eugenia.app / test123</p>
           </div>
         </div>
       </div>
