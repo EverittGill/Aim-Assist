@@ -1,0 +1,87 @@
+# Digital Ocean App Platform Configuration
+name: eugenia-isa
+region: nyc
+
+# Backend Service
+services:
+- name: eugenia-backend
+  source_dir: /eugenia-backend
+  github:
+    repo: your-username/eugenia-backend
+    branch: main
+  run_command: npm start
+  environment_slug: node-js
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  
+  # Environment variables (these will be set in DO console)
+  envs:
+  - key: NODE_ENV
+    value: production
+  - key: PORT
+    value: "8080"
+  - key: FUB_API_KEY
+    scope: RUN_TIME
+    type: SECRET
+  - key: FUB_X_SYSTEM
+    scope: RUN_TIME
+    type: SECRET
+  - key: FUB_X_SYSTEM_KEY
+    scope: RUN_TIME
+    type: SECRET
+  - key: FUB_USER_ID_FOR_AI
+    scope: RUN_TIME
+    type: SECRET
+  - key: GEMINI_API_KEY
+    scope: RUN_TIME
+    type: SECRET
+  - key: TWILIO_ACCOUNT_SID
+    scope: RUN_TIME
+    type: SECRET
+  - key: TWILIO_AUTH_TOKEN
+    scope: RUN_TIME
+    type: SECRET
+  - key: TWILIO_FROM_NUMBER
+    scope: RUN_TIME
+    type: SECRET
+  - key: ADMIN_EMAIL
+    scope: RUN_TIME
+    type: SECRET
+  - key: ADMIN_PASSWORD_HASH
+    scope: RUN_TIME
+    type: SECRET
+  - key: JWT_SECRET
+    scope: RUN_TIME
+    type: SECRET
+  - key: USER_AGENCY_NAME
+    value: "Sell It With Everitt"
+  - key: APP_DOMAIN
+    value: "eugenia-isa.ondigitalocean.app"
+
+  # Health check
+  health_check:
+    http_path: /
+
+# Frontend Service (Static Site)
+static_sites:
+- name: eugenia-frontend
+  source_dir: /eugenia-frontend
+  github:
+    repo: your-username/eugenia-backend
+    branch: main
+  build_command: npm run build
+  output_dir: build
+  
+  # Environment variables for build
+  envs:
+  - key: REACT_APP_API_URL
+    value: "https://eugenia-isa-eugenia-backend.ondigitalocean.app/api"
+  - key: REACT_APP_NODE_ENV
+    value: production
+
+# Routes
+routes:
+- path: /api
+  to: eugenia-backend
+- path: /
+  to: eugenia-frontend
