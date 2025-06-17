@@ -271,13 +271,137 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
 
   router.post('/initiate-ai-outreach', requireAuth, async (req, res) => {
     try {
+      if (!fubService) {
+        return res.status(503).json({ error: 'FUB service not configured' });
+      }
+      
+      if (!geminiService) {
+        return res.status(503).json({ error: 'AI service not configured' });
+      }
+      
+      if (!twilioService) {
+        return res.status(503).json({ error: 'SMS service not configured' });
+      }
+      
+      // Create lead detection service
+      const LeadDetectionService = require('../services/leadDetectionService');
+      const leadDetectionService = new LeadDetectionService(fubService);
+      
+      // Scan for new leads
+      const eligibleLeads = await leadDetectionService.scanForNewLeads();
+      
+      if (eligibleLeads.length === 0) {
+        return res.json({ 
+          success: true,
+          message: 'No new leads found for AI outreach',
+          stats: {
+            scanned: 0,
+            eligible: 0,
+            processed: 0
+          }
+        });
+      }
+      
+      // Process leads for outreach (max 5 at a time for safety)
+      const processingResults = await leadDetectionService.processLeadsForOutreach(
+        eligibleLeads, 
+        { maxBatchSize: 5, delayMs: 1000 }
+      );
+      
+      // Generate initial messages and send
+      const outreachResults = [];
+      const agencyName = process.env.USER_AGENCY_NAME || 'Our Agency';
+      const appDomain = process.env.APP_DOMAIN || 'https://eugenia-app.com';
+      
+      for (const result of processingResults.successful) {
+        const lead = result.lead;
+        
+        try {
+          console.log(`\n🤖 Generating initial message for ${lead.name}...`);
+          
+          // Generate initial outreach message
+          const aiMessage = await geminiService.generateInitialOutreach(lead, agencyName);
+          console.log(`Generated message: "${aiMessage}"`);
+          
+          // Send SMS
+          console.log(`📱 Sending SMS to ${lead.phone}...`);
+          const smsResult = await twilioService.sendSMS(lead.phone, aiMessage);
+          console.log(`SMS sent successfully: ${smsResult.messageSid}`);
+          
+          // Log to FUB
+          await fubService.logTextMessage(
+            lead.id,
+            aiMessage,
+            'outbound',
+            process.env.TWILIO_FROM_NUMBER,
+            lead.phone
+          );
+          console.log('Message logged to FUB');
+          
+          // Update lead status and conversation link
+          const conversationUrl = `${appDomain}/conversation/${lead.id}`;
+          
+          // Update Eugenia talking status to active
+          await fubService.updateLeadCustomField(
+            lead.id,
+            process.env.FUB_EUGENIA_TALKING_STATUS_FIELD_NAME,
+            'active'
+          );
+          
+          // Update conversation link
+          await fubService.updateLeadCustomField(
+            lead.id,
+            process.env.FUB_EUGENIA_CONVERSATION_LINK_FIELD_NAME,
+            conversationUrl
+          );
+          
+          console.log(`✅ Successfully initiated AI outreach for ${lead.name}`);
+          
+          outreachResults.push({
+            leadId: lead.id,
+            leadName: lead.name,
+            status: 'success',
+            message: aiMessage,
+            conversationUrl
+          });
+          
+        } catch (error) {
+          console.error(`❌ Failed to initiate outreach for ${lead.name}:`, error);
+          outreachResults.push({
+            leadId: lead.id,
+            leadName: lead.name,
+            status: 'failed',
+            error: error.message
+          });
+        }
+        
+        // Small delay between sends
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // Prepare response
+      const successCount = outreachResults.filter(r => r.status === 'success').length;
+      const failedCount = outreachResults.filter(r => r.status === 'failed').length;
+      
       res.json({ 
         success: true,
-        message: 'New lead processing initiated (implementation pending)'
+        message: `Processed ${eligibleLeads.length} eligible leads`,
+        stats: {
+          scanned: eligibleLeads.length,
+          eligible: processingResults.successful.length,
+          processed: successCount,
+          failed: failedCount,
+          skipped: processingResults.skipped.length
+        },
+        results: outreachResults
       });
+      
     } catch (error) {
       console.error('Error processing new leads:', error);
-      res.status(500).json({ error: 'Failed to process new leads' });
+      res.status(500).json({ 
+        error: 'Failed to process new leads',
+        details: error.message 
+      });
     }
   });
 

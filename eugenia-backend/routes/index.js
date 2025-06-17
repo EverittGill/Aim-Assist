@@ -7,6 +7,6 @@ module.exports = (services) => {
     auth: require('./auth')(authService),
     leads: require('./leads')(fubService, conversationService, requireAuth),
     ai: require('./ai')(geminiService, twilioService, fubService, conversationService, requireAuth),
-    webhooks: require('./webhooks')(twilioService)
+    webhooks: require('./webhooks')(twilioService, fubService, geminiService, conversationService)
   };
 };

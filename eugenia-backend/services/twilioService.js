@@ -6,6 +6,7 @@ class TwilioService {
       throw new Error('Twilio account SID, auth token, and from number are required');
     }
     this.client = twilio(accountSid, authToken);
+    this.authToken = authToken;
     this.fromNumber = fromNumber;
   }
 

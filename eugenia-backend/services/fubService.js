@@ -41,6 +41,108 @@ class FUBService {
     return e164Regex.test(cleanPhone) || usPhoneRegex.test(cleanPhone) || us11DigitRegex.test(cleanPhone);
   }
 
+  normalizePhoneNumber(phone) {
+    if (!phone || typeof phone !== 'string') return null;
+    
+    // Remove all non-digit characters
+    let cleaned = phone.replace(/\D/g, '');
+    
+    // Handle different formats
+    if (cleaned.length === 10) {
+      // US number without country code
+      cleaned = '1' + cleaned;
+    } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+      // US number with country code
+      // Already in correct format
+    } else if (cleaned.length > 11) {
+      // International or invalid - try to use as is
+      return '+' + cleaned;
+    } else {
+      // Invalid length
+      return null;
+    }
+    
+    // Return in E.164 format
+    return '+' + cleaned;
+  }
+
+  async findLeadByPhone(phoneNumber) {
+    if (!phoneNumber) {
+      throw new Error('Phone number is required');
+    }
+
+    // Normalize the phone number
+    const normalizedPhone = this.normalizePhoneNumber(phoneNumber);
+    if (!normalizedPhone) {
+      console.error('Invalid phone number format:', phoneNumber);
+      return null;
+    }
+
+    // Try different phone formats for searching
+    const phoneVariants = [
+      normalizedPhone,                                    // +17068184445
+      normalizedPhone.substring(2),                       // 7068184445  
+      normalizedPhone.substring(1),                       // 17068184445
+      phoneNumber                                         // Original format
+    ];
+
+    console.log('Searching for lead with phone variants:', phoneVariants);
+
+    for (const phoneVariant of phoneVariants) {
+      try {
+        // Search for leads with this phone number
+        const url = `${this.baseUrl}/people?limit=10&q=${encodeURIComponent(phoneVariant)}`;
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: this.getHeaders()
+        });
+
+        if (!response.ok) {
+          console.error('FUB search failed:', response.status);
+          continue;
+        }
+
+        const data = await response.json();
+        
+        // Look through results for exact phone match
+        for (const person of data.people || []) {
+          const phones = person.phones || [];
+          
+          for (const phone of phones) {
+            const leadPhoneNormalized = this.normalizePhoneNumber(phone.value);
+            
+            if (leadPhoneNormalized === normalizedPhone) {
+              console.log(`Found lead match: ${person.name} (ID: ${person.id})`);
+              
+              // Return full lead data in expected format
+              return {
+                id: person.id.toString(),
+                name: person.name || `${person.firstName || ''} ${person.lastName || ''}`.trim(),
+                email: person.emails?.find(e => e.isPrimary)?.value || person.emails?.[0]?.value || null,
+                phone: phone.value,
+                hasValidPhone: true,
+                status: person.stage || 'Unknown',
+                fubLink: `https://app.followupboss.com/people/${person.id}`,
+                lastContacted: person.lastCommunication?.createdDate || person.updated,
+                notes: person.customFields?.find(cf => cf.name.toLowerCase() === 'notes')?.value || person.background || '',
+                source: person.source || 'Unknown',
+                tags: person.tags?.map(t => typeof t === 'string' ? t : t.name) || [],
+                customFields: person.customFields || []
+              };
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error searching with phone variant:', phoneVariant, error);
+        continue;
+      }
+    }
+
+    console.log('No lead found for phone number:', phoneNumber);
+    return null;
+  }
+
   async fetchLeads(limit = 500, offset = 0) {
     const fieldsToRequest = "id,name,firstName,lastName,stage,source,created,updated,lastCommunication,customFields,background,tags,emails,phones";
     const url = `${this.baseUrl}/people?limit=${limit}&offset=${offset}&sort=-created&fields=${fieldsToRequest}`;
@@ -75,6 +177,7 @@ class FUBService {
           notes: p.customFields?.find(cf => cf.name.toLowerCase() === 'notes')?.value || p.background || '',
           source: p.source || 'Unknown',
           tags: p.tags?.map(t => typeof t === 'string' ? t : t.name) || [],
+          customFields: p.customFields || [],
           conversationHistory: []
         };
       });

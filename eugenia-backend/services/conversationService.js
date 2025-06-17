@@ -6,32 +6,44 @@ class ConversationService {
     this.fubService = fubService;
   }
 
-  // Fetch ALL historical messages for a lead from FUB
+  // Fetch ALL historical messages for a lead from FUB with pagination
   async fetchFullConversationHistory(leadId, leadName = null) {
     try {
-      const url = `https://api.followupboss.com/v1/textMessages?personId=${leadId}&limit=500&sort=-created`;
+      const allMessages = [];
+      let offset = 0;
+      const limit = 100; // FUB's max per page
+      let hasMore = true;
       
       console.log(`📥 Fetching FUB messages for lead ${leadId}...`);
-      console.log(`   URL: ${url}`);
       
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: this.fubService.getHeaders()
-      });
+      // Keep fetching until we have all messages
+      while (hasMore) {
+        const url = `https://api.followupboss.com/v1/textMessages?personId=${leadId}&limit=${limit}&offset=${offset}&sort=-created`;
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: this.fubService.getHeaders()
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Failed to fetch conversation history (${response.status}):`, errorText);
-        return [];
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Failed to fetch conversation history (${response.status}):`, errorText);
+          break;
+        }
+
+        const data = await response.json();
+        const messages = data.textmessages || [];
+        
+        allMessages.push(...messages);
+        
+        // Check if there are more messages
+        hasMore = messages.length === limit;
+        offset += limit;
+        
+        console.log(`   Fetched batch: ${messages.length} messages (total so far: ${allMessages.length})`);
       }
-
-      const data = await response.json();
-      console.log(`   FUB Response: ${data.textmessages?.length || 0} messages found`);
       
-      // Log first message for debugging
-      if (data.textmessages?.length > 0) {
-        console.log(`   Sample message:`, JSON.stringify(data.textmessages[0], null, 2));
-      }
+      console.log(`   Total messages fetched: ${allMessages.length}`);
       
       // Transform FUB messages to our format
       // Determine sender based on phone numbers
@@ -52,7 +64,7 @@ class ConversationService {
       const normalizedEugeniaPhone = normalizePhone(eugeniaPhoneNumber);
       console.log(`   Normalized Eugenia phone for comparison: ${normalizedEugeniaPhone}`);
       
-      const messages = data.textmessages?.map(msg => {
+      const messages = allMessages.map(msg => {
         // Normalize the fromNumber for comparison
         const normalizedFromNumber = normalizePhone(msg.fromNumber);
         
@@ -69,7 +81,7 @@ class ConversationService {
           toNumber: msg.toNumber,
           userId: msg.userId
         };
-      }) || [];
+      });
 
       // Sort by timestamp (oldest first)
       messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
@@ -139,6 +151,59 @@ class ConversationService {
       currentMessage,
       totalMessageCount: conversationHistory.length,
       hasContext: conversationHistory.length > 0
+    };
+  }
+  
+  // Alias method for webhook compatibility
+  async getConversationHistory(leadId, leadName = null) {
+    return this.fetchFullConversationHistory(leadId, leadName);
+  }
+  
+  // Format conversation history for AI prompt
+  formatConversationForAI(messages) {
+    if (!messages || messages.length === 0) {
+      return "No previous conversation history.";
+    }
+    
+    // Take the most recent messages (AI doesn't need ancient history)
+    const recentMessages = messages.slice(-50); // Last 50 messages
+    
+    return recentMessages.map(msg => {
+      const date = new Date(msg.timestamp).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+      return `[${date}] ${msg.sender}: ${msg.text}`;
+    }).join('\n');
+  }
+  
+  // Get conversation metrics for AI context
+  getConversationMetrics(messages) {
+    if (!messages || messages.length === 0) {
+      return {
+        totalMessages: 0,
+        leadMessages: 0,
+        eugeniaMessages: 0,
+        lastContactDate: null,
+        conversationDuration: 0
+      };
+    }
+    
+    const leadMessages = messages.filter(m => m.direction === 'inbound').length;
+    const eugeniaMessages = messages.filter(m => m.direction === 'outbound').length;
+    const firstMessage = new Date(messages[0].timestamp);
+    const lastMessage = new Date(messages[messages.length - 1].timestamp);
+    const durationDays = Math.floor((lastMessage - firstMessage) / (1000 * 60 * 60 * 24));
+    
+    return {
+      totalMessages: messages.length,
+      leadMessages,
+      eugeniaMessages,
+      lastContactDate: lastMessage.toISOString(),
+      conversationDuration: durationDays
     };
   }
 }

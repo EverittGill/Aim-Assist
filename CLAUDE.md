@@ -188,3 +188,69 @@ Configure these URLs in Twilio Console for your phone number (+18662981158):
 - **Incoming SMS Webhook**: `https://your-domain.com/webhook/twilio-sms` (HTTP POST)
 - **Status Callback**: `https://your-domain.com/webhook/twilio-status` (optional)
 - **Local Testing**: Use ngrok to expose local server: `ngrok http 3001`
+- **Development Mode**: Set `NODE_ENV=development` to bypass signature validation
+
+### Phone Number Matching System (Implemented 2025-01-17)
+**Phone Normalization:**
+- All phone numbers normalized to E.164 format: `+1XXXXXXXXXX`
+- Handles formats: `(706) 818-4445`, `706-818-4445`, `7068184445`, `+17068184445`
+- `normalizePhoneNumber()` in FUBService handles conversion
+
+**Lead Lookup Process:**
+- `findLeadByPhone()` searches FUB with multiple format variants
+- Returns full lead object with custom fields or null if not found
+- Unmatched numbers logged for manual review (notification system pending)
+
+### Webhook Processing Flow (Implemented 2025-01-17)
+When an SMS arrives at Eugenia's Twilio number:
+1. Webhook validates signature (skipped in dev mode)
+2. Looks up lead by phone number
+3. Logs incoming message to FUB `/textMessages`
+4. Checks if AI is paused (`customEugeniaTalkingStatus`)
+5. Fetches full conversation history
+6. Generates AI response with Gemini
+7. Waits 45 seconds for natural timing
+8. Sends response via Twilio
+9. Logs outbound message to FUB
+10. Updates lead status if escalation detected
+
+### AI Prompt System (Implemented 2025-01-17)
+**Prompt Management:**
+- All prompts stored in `/prompts/isaPrompts.js` for easy editing
+- Separate prompts for initial outreach vs ongoing conversations
+- ISA-specific objectives and guidelines built into prompts
+
+**Escalation Detection:**
+- Automatic pause after 3 messages from lead
+- Keyword detection for scheduling, human requests, opt-outs
+- Expert question detection (financing, contracts, legal, etc.)
+- Logs escalation reasons for debugging
+
+**Context Retention:**
+- Fetches up to 500 messages from FUB (with pagination)
+- Formats recent 50 messages for AI context
+- Includes lead profile, tags, source, and conversation metrics
+- Never repeats questions already answered
+
+### Lead Detection & Outreach System (Implemented 2025-01-17)
+**Lead Detection Service:**
+- Scans FUB for leads with "Direct Connect" or "PPC" tags (configurable)
+- Eligibility checks: valid phone, AI not active, not contacted in 24hrs
+- Batch processing with safety limits (max 5 leads at once)
+- `/api/initiate-ai-outreach` endpoint triggers the process
+
+**Initial Outreach Flow:**
+1. Scan for eligible leads based on tags
+2. Generate personalized initial message
+3. Send SMS via Twilio
+4. Log message to FUB
+5. Update lead custom fields:
+   - `customEugeniaTalkingStatus` → "active"
+   - `customAimAssist` → conversation URL
+6. Generate clickable link: `http://localhost:3000/conversation/{leadId}`
+
+**Safety Features:**
+- Maximum 5 leads processed per batch
+- 1-second delay between outreach attempts
+- Comprehensive error handling per lead
+- Detailed success/failure reporting
