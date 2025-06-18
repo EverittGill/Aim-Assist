@@ -90,29 +90,28 @@ module.exports = (twilioService, fubService, geminiService, conversationService)
       console.log('AI Response:', aiResponse.message);
       console.log('Should Pause:', aiResponse.shouldPause);
       
-      // 6. Apply 45-second delay for natural response timing
-      console.log('Waiting 45 seconds before sending response...');
-      await new Promise(resolve => setTimeout(resolve, 45000));
-      
-      // 7. Send AI response via Twilio
+      // 6. Queue AI response with natural delay
       try {
-        const sentMessage = await twilioService.sendSMS(
+        const queueResult = await twilioService.queueSMS(
           incomingMessage.from,
-          aiResponse.message
-        );
-        console.log('AI response sent successfully:', sentMessage.sid);
-        
-        // 8. Log outbound message to FUB
-        await fubService.logTextMessage(
-          lead.id,
           aiResponse.message,
-          'outbound',
-          incomingMessage.to,  // Eugenia's number
-          incomingMessage.from // Lead's number
+          {
+            leadId: lead.id,
+            direction: 'outbound',
+            fromNumber: incomingMessage.to,  // Eugenia's number
+            delay: 45000, // 45-second delay for natural timing
+            priority: 1   // Higher priority for responses
+          }
         );
-        console.log('Outbound message logged to FUB');
+        
+        if (queueResult.queued) {
+          console.log(`AI response queued successfully (Job ID: ${queueResult.jobId})`);
+          console.log('Message will be sent in 45 seconds for natural timing');
+        } else {
+          console.log('AI response sent directly (queue unavailable)');
+        }
       } catch (error) {
-        console.error('Failed to send AI response:', error);
+        console.error('Failed to queue AI response:', error);
         // TODO: Send notification to agent about failed response
       }
       

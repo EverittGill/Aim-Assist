@@ -90,6 +90,14 @@ ADMIN_PASSWORD_HASH=your_bcrypt_password_hash_here
 
 # Agency Configuration
 USER_AGENCY_NAME=Your Awesome Realty
+
+# Error Tracking (Sentry)
+SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
+
+# Queue System (Redis)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
 ```
 
 ## Testing & Linting Commands
@@ -101,6 +109,14 @@ npm run typecheck
 # Frontend
 npm test
 npm run lint
+
+# Queue System Testing
+node test-queue-system.js    # Test queue infrastructure
+node monitor-queues.js       # Live queue monitoring dashboard
+
+# Error Tracking Test
+node test-sentry.js          # Verify Sentry integration
+curl http://localhost:3001/debug-sentry  # Trigger test error
 ```
 **IMPORTANT**: Always run linting commands after code changes per user requirements
 
@@ -119,6 +135,15 @@ npm run lint
   - WhatsApp-style UI for conversation display
 - **Authentication**: JWT-based with 7-day expiration for persistent login
 - **SMS Ready**: Twilio integration complete with phone number +18662981158
+- **Queue System**: Bull Queue with Redis for reliable message processing
+  - SMS queue with 45-second delay for natural conversation timing
+  - Lead processing queue for batch outreach
+  - 3 retry attempts with exponential backoff
+  - Real-time monitoring at `/api/queues/stats`
+- **Error Tracking**: Sentry integration for production-ready error monitoring
+  - Automatic error capture with full context
+  - Performance monitoring and tracing
+  - Filtered to exclude non-critical errors (DNS, connection issues)
 
 ## Critical Context & Learnings
 
@@ -254,3 +279,29 @@ When an SMS arrives at Eugenia's Twilio number:
 - 1-second delay between outreach attempts
 - Comprehensive error handling per lead
 - Detailed success/failure reporting
+
+### Production Infrastructure (Implemented 2025-01-18)
+**Queue System with Bull & Redis:**
+- Implemented Bull Queue for reliable message processing
+- Redis backend for queue persistence (installed via Homebrew)
+- SMS Queue: 45-second delay for natural conversation timing
+- Lead Queue: Batch processing with lower concurrency
+- Automatic retries: 3 attempts with exponential backoff
+- Queue monitoring endpoint: `/api/queues/stats`
+- Test scripts: `test-queue-system.js`, `monitor-queues.js`
+
+**Error Tracking with Sentry:**
+- Full Sentry integration using latest Express setup
+- `instrument.js` initializes Sentry before app startup
+- Automatic error capture with context and stack traces
+- Performance monitoring and transaction tracing
+- Test endpoint: `/debug-sentry` for verification
+- Filtered non-critical errors (DNS, connection issues)
+
+**Benefits of Infrastructure Updates:**
+1. **Reliability**: Messages persisted in Redis, survive server crashes
+2. **Natural Timing**: 45-second delay makes AI responses feel human
+3. **Error Recovery**: Automatic retries handle transient failures
+4. **Observability**: Real-time queue stats and error tracking
+5. **Scalability**: Concurrent message processing with worker pools
+6. **Production Ready**: Professional error handling and monitoring

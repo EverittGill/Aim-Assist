@@ -49,6 +49,7 @@ const App = ({ user, onLogout }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
   const [newLeadData, setNewLeadData] = useState({ name: '', email: '', phone: '', notes: '' });
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Persist relevant settings to localStorage
   useEffect(() => { setToLocalStorage('userAgencyName_isa', userAgencyName); }, [userAgencyName]);
@@ -87,23 +88,6 @@ const App = ({ user, onLogout }) => {
     } finally { setIsLoadingGemini(false); }
   }, [userAgencyName]);
 
-  // Handle URL-based lead selection
-  useEffect(() => {
-    if (leadId && leads.length > 0) {
-      const lead = leads.find(l => l.id === leadId);
-      if (lead && (!selectedLead || selectedLead.id !== leadId)) {
-        setSelectedLead(lead);
-        setGeminiMessage('');
-        setLeadReply('');
-        if (lead.conversationHistory && lead.conversationHistory.length === 0) {
-          handleNurtureWithGemini(lead, []);
-        }
-      } else if (!lead) {
-        // Lead not found, navigate to home
-        navigate('/');
-      }
-    }
-  }, [leadId, leads, selectedLead, handleNurtureWithGemini, navigate]);
   
   const loadLeads = useCallback(async (showNotification = true) => {
     setIsLoadingLeads(true);
@@ -223,43 +207,19 @@ const App = ({ user, onLogout }) => {
 
   const handleNewLeadInputChange = (field, value) => { setNewLeadData(prev => ({ ...prev, [field]: value })); };
   
-  const handleSelectLead = useCallback(async (lead) => { 
-    setSelectedLead(lead); setGeminiMessage(''); setLeadReply('');
-    
-    // Fetch conversation history from FUB
-    try {
-      handleSystemMessage('info', 'Loading conversation history...');
-      const response = await fetchLeadConversation(lead.id);
-      
-      console.log('FUB conversation response:', response);
-      
-      if (response && response.conversationHistory) {
-        // Update the lead with FUB conversation history
-        const updatedLead = { ...lead, conversationHistory: response.conversationHistory };
-        setSelectedLead(updatedLead);
-        
-        // Update in leads array too
-        setLeads(prevLeads => prevLeads.map(l => 
-          l.id === lead.id ? updatedLead : l
-        ));
-        
-        handleSystemMessage('success', `Loaded ${response.messageCount} messages from FUB`);
-        
-        // Generate AI message if no history
-        if (response.conversationHistory.length === 0) { 
-          handleNurtureWithGemini(updatedLead, []); 
-        }
-      } else {
-        console.warn('No conversation history in response:', response);
-      }
-    } catch (error) {
-      console.error('Failed to load conversation history:', error);
-      handleSystemMessage('warning', 'Could not load FUB history, using local history');
+  const handleSelectLead = useCallback((lead) => { 
+    // Only navigate if we're not already on the correct URL
+    if (!leadId || leadId !== lead.id) {
+      navigate(`/conversation/${lead.id}`);
+    } else {
+      // If we're already on the correct URL, just update the selection
+      setSelectedLead(lead);
+      setGeminiMessage('');
+      setLeadReply('');
     }
-    
-    // Update URL to reflect selected lead
-    navigate(`/conversation/${lead.id}`);
-  }, [navigate, handleNurtureWithGemini, handleSystemMessage]);
+    // Clear search after selecting a lead
+    setSearchQuery('');
+  }, [navigate, leadId]);
 
   const copyLeadMessageToClipboard = async (text) => { 
     try {
@@ -301,7 +261,75 @@ const App = ({ user, onLogout }) => {
 
   useEffect(() => { loadLeads(false); }, [loadLeads]);
 
+  // Handle URL-based lead selection
+  useEffect(() => {
+    if (leadId && leads.length > 0) {
+      const lead = leads.find(l => l.id === leadId);
+      if (lead && (!selectedLead || selectedLead.id !== leadId)) {
+        // Only select if not already selected to prevent loops
+        setSelectedLead(lead);
+        setGeminiMessage('');
+        setLeadReply('');
+        setSearchQuery(''); // Clear search when selecting via URL
+        
+        // Fetch conversation history from FUB
+        (async () => {
+          try {
+            handleSystemMessage('info', 'Loading conversation history...');
+            const response = await fetchLeadConversation(lead.id);
+            
+            console.log('FUB conversation response:', response);
+            
+            if (response && response.conversationHistory) {
+              // Update the lead with FUB conversation history
+              const updatedLead = { ...lead, conversationHistory: response.conversationHistory };
+              setSelectedLead(updatedLead);
+              
+              // Update in leads array too
+              setLeads(prevLeads => prevLeads.map(l => 
+                l.id === lead.id ? updatedLead : l
+              ));
+              
+              handleSystemMessage('success', `Loaded ${response.messageCount} messages from FUB`);
+              
+              // Auto-hide the notification after 1.5 seconds
+              setTimeout(() => {
+                setSystemMessage({ type: '', text: '' });
+              }, 1500);
+              
+              // Generate AI message if no history
+              if (response.conversationHistory.length === 0) { 
+                handleNurtureWithGemini(updatedLead, []); 
+              }
+            } else {
+              console.warn('No conversation history in response:', response);
+            }
+          } catch (error) {
+            console.error('Failed to load conversation history:', error);
+            handleSystemMessage('warning', 'Could not load FUB history, using local history');
+          }
+        })();
+      } else if (!lead) {
+        // Lead not found, navigate to home
+        navigate('/');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadId, leads, navigate, handleNurtureWithGemini, handleSystemMessage, fetchLeadConversation]);
+
   const isAnyActionInProgress = isLoadingLeads || isLoadingGemini || isSending || isProcessingNewLeads;
+
+  // Filter leads based on search query
+  const filteredLeads = searchQuery.trim() 
+    ? leads.filter(lead => {
+        const query = searchQuery.toLowerCase();
+        return (
+          lead.name?.toLowerCase().includes(query) ||
+          lead.email?.toLowerCase().includes(query) ||
+          lead.phone?.includes(query)
+        );
+      })
+    : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-warm-50 to-warm-100 text-warm-900 font-sans flex flex-col" data-theme="eugenia">
@@ -309,8 +337,11 @@ const App = ({ user, onLogout }) => {
         onToggleSettings={() => setIsSettingsOpen(prev => !prev)} 
         user={user}
         onLogout={onLogout}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
       />
       
+      {/* Header panel removed - buttons commented out for potential future use
       <header className="bg-warm-100/80 backdrop-blur-lg shadow-warm-md border-b border-warm-200 p-4 sticky top-[61px] z-50">
         <div className="container mx-auto flex justify-between items-center">
           <h2 className="text-xl font-semibold text-brand-800">Lead Engagement Panel</h2>
@@ -324,6 +355,7 @@ const App = ({ user, onLogout }) => {
           </div>
         </div>
       </header>
+      */}
 
       {systemMessage.text && (  
         <div className={`fixed top-36 right-5 p-4 rounded-lg shadow-warm-lg border border-warm-200 z-[100] max-w-md text-sm ${systemMessage.type === 'error' ? 'bg-error-light text-error-dark border-error' : systemMessage.type === 'success' ? 'bg-success-light text-success-dark border-success' : (systemMessage.type === 'warning' ? 'bg-warning-light text-warning-dark border-warning' : 'bg-info-light text-info-dark border-info')} transition-all duration-warm ease-warm flex items-start`}>
@@ -353,9 +385,10 @@ const App = ({ user, onLogout }) => {
       />
 
       <LeadManagementView
-        leads={leads}
+        leads={searchQuery.trim() ? filteredLeads : leads}
         selectedLead={selectedLead}
         isLoadingLeads={isLoadingLeads}
+        searchQuery={searchQuery}
         isLoadingGemini={isLoadingGemini}
         isSending={isSending}
         geminiMessage={geminiMessage}

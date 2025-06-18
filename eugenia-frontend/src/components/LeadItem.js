@@ -15,7 +15,6 @@ const LeadItem = ({ lead, onSelectLead, selectedLeadId, onDeleteLead, isActionIn
           <p className={`text-xs mt-0.5 ${isSelected ? 'text-brand-200' : 'text-warm-700'}`}>Status: <span className="font-medium">{lead.status}</span></p> 
         </div>
         <div className="flex items-center gap-1"> 
-          {isSelected && <button onClick={(e) => { e.stopPropagation(); onDeleteLead(lead.id, lead.name); }} disabled={isActionInProgress} className={`p-1.5 rounded hover:bg-error/70 disabled:opacity-50 ${isSelected ? 'text-red-200 hover:text-white' : 'text-error'}`} title="Delete Lead"><Trash2 size={16}/></button>} 
           <button onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }} className={`p-1 rounded hover:bg-warm-200/30 ${isSelected ? 'text-brand-100' : 'text-warm-600'}`} aria-label={isExpanded ? "Collapse" : "Expand"}> {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />} </button> 
         </div>
       </div>

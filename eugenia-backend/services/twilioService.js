@@ -59,6 +59,45 @@ class TwilioService {
       timestamp: new Date().toISOString()
     };
   }
+
+  // Queue an SMS instead of sending directly
+  async queueSMS(toNumber, message, options = {}) {
+    try {
+      const { queues } = require('../config/queues');
+      
+      if (!queues?.smsQueue) {
+        console.warn('Queue not available, sending SMS directly');
+        return this.sendSMS(toNumber, message);
+      }
+      
+      const jobData = {
+        to: toNumber,
+        message,
+        leadId: options.leadId,
+        direction: options.direction || 'outbound',
+        fromNumber: options.fromNumber || this.fromNumber,
+        priority: options.priority || 0
+      };
+      
+      const job = await queues.smsQueue.add('send-sms', jobData, {
+        priority: options.priority || 0,
+        delay: options.delay || 0
+      });
+      
+      console.log(`SMS queued successfully. Job ID: ${job.id}`);
+      return {
+        success: true,
+        queued: true,
+        jobId: job.id,
+        to: toNumber
+      };
+    } catch (error) {
+      console.error('Error queuing SMS:', error);
+      // Fallback to direct sending if queue fails
+      console.warn('Falling back to direct SMS sending');
+      return this.sendSMS(toNumber, message);
+    }
+  }
 }
 
 module.exports = TwilioService;

@@ -1,6 +1,12 @@
 // eugenia-backend/server.js
 
+// IMPORTANT: Load environment variables first, then instrument Sentry
 require('dotenv').config();
+
+// Initialize Sentry before all other imports
+require('./instrument');
+
+const Sentry = require('@sentry/node');
 const express = require('express');
 const cors = require('cors');
 const GeminiService = require('./services/geminiService');
@@ -11,6 +17,8 @@ const ConversationService = require('./services/conversationService');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Middleware
 
 // Initialize services
 let geminiService;
@@ -93,6 +101,25 @@ app.get('/', (req, res) => {
   res.send('Hello from the Eugenia ISA Backend! The server is running.');
 });
 
+// Initialize queues
+const { initializeQueues, queues, getQueueStats } = require('./config/queues');
+initializeQueues();
+
+// Initialize queue processors if services are available
+if (queues?.smsQueue && twilioService) {
+  const { createSmsProcessor, createLeadProcessor } = require('./workers/smsProcessor');
+  
+  // Process SMS jobs
+  queues.smsQueue.process('send-sms', 5, createSmsProcessor(twilioService, fubService));
+  
+  // Process lead outreach jobs
+  if (geminiService && fubService) {
+    queues.leadQueue.process('process-lead', 2, createLeadProcessor(geminiService, twilioService, fubService));
+  }
+  
+  console.log('Queue processors initialized');
+}
+
 // Mount route modules
 const routes = require('./routes')({
   authService,
@@ -107,6 +134,50 @@ app.use('/api/leads', routes.leads);
 app.use('/api', routes.ai);
 app.use('/webhook', routes.webhooks);
 
+// Debug route for testing Sentry
+app.get('/debug-sentry', function mainHandler(req, res) {
+  throw new Error('My first Sentry error from Eugenia ISA!');
+});
+
+// Queue monitoring endpoint
+app.get('/api/queues/stats', async (req, res) => {
+  if (!queues?.smsQueue) {
+    return res.json({ message: 'Queues not available' });
+  }
+  
+  try {
+    const smsStats = await getQueueStats(queues.smsQueue);
+    const leadStats = await getQueueStats(queues.leadQueue);
+    
+    res.json({
+      sms: smsStats,
+      leads: leadStats,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get queue stats' });
+  }
+});
+
+// Sentry error handler must be registered before any other error middleware and after all controllers
+Sentry.setupExpressErrorHandler(app);
+
+// Custom error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  
+  // The error id is attached to `res.sentry` to be returned
+  // and optionally displayed to the user for support.
+  const errorId = res.sentry;
+  
+  res.status(500).json({ 
+    error: 'Internal server error',
+    errorId: errorId,
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Eugenia Backend server is running on http://localhost:${PORT}`);
+  console.log(`Queue monitoring available at http://localhost:${PORT}/api/queues/stats`);
 });

@@ -128,7 +128,8 @@ class FUBService {
                 notes: person.customFields?.find(cf => cf.name.toLowerCase() === 'notes')?.value || person.background || '',
                 source: person.source || 'Unknown',
                 tags: person.tags?.map(t => typeof t === 'string' ? t : t.name) || [],
-                customFields: person.customFields || []
+                customFields: person.customFields || [],
+                ylopoStarsLink: person.sourceUrl && person.sourceUrl.includes('stars.ylopo.com') ? person.sourceUrl : null
               };
             }
           }
@@ -144,8 +145,8 @@ class FUBService {
   }
 
   async fetchLeads(limit = 500, offset = 0) {
-    const fieldsToRequest = "id,name,firstName,lastName,stage,source,created,updated,lastCommunication,customFields,background,tags,emails,phones";
-    const url = `${this.baseUrl}/people?limit=${limit}&offset=${offset}&sort=-created&fields=${fieldsToRequest}`;
+    // Try without specifying fields to get all available data
+    const url = `${this.baseUrl}/people?limit=${limit}&offset=${offset}&sort=-created`;
 
     try {
       const response = await fetch(url, {
@@ -165,6 +166,11 @@ class FUBService {
         const phone = p.phones?.find(ph => ph.isPrimary)?.value || p.phones?.[0]?.value || null;
         const hasValidPhone = this.isValidPhoneNumber(phone);
         
+        // Log custom fields for debugging
+        if (p.customFields && p.customFields.length > 0) {
+          console.log(`Lead ${p.name} has custom fields:`, p.customFields.map(cf => ({ name: cf.name, value: cf.value })));
+        }
+        
         return {
           id: p.id.toString(),
           name: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
@@ -178,6 +184,7 @@ class FUBService {
           source: p.source || 'Unknown',
           tags: p.tags?.map(t => typeof t === 'string' ? t : t.name) || [],
           customFields: p.customFields || [],
+          ylopoStarsLink: p.sourceUrl && p.sourceUrl.includes('stars.ylopo.com') ? p.sourceUrl : null,
           conversationHistory: []
         };
       });

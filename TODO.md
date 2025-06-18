@@ -420,6 +420,47 @@ Last Updated: 2025-01-16
 
 ---
 
+## Strategic Questions for Future Development 🤔
+
+### Lead Volume & Pacing
+- **Daily Volume**: How many new leads do you typically get per day?
+- **Initial Contact Timing**: Should Eugenia message immediately or wait a few minutes to seem more human?
+- **Business Hours**: What hours should Eugenia text? Should she respect time zones?
+- **Weekend Strategy**: Different approach for weekend leads?
+
+### Conversation Style & Approach
+- **Tone**: How casual vs professional should Eugenia be?
+- **Property Mentions**: Should she reference specific properties or stay general initially?
+- **Qualifying Questions**: What specific questions work best for your market?
+- **Local Knowledge**: Should she demonstrate area expertise?
+
+### Escalation & Handoff Strategy
+- **Hot Lead Indicators**: Besides current keywords, what signals a ready-to-buy lead?
+- **Notification Speed**: How quickly do you need alerts? Immediate or batched?
+- **Handoff Scripts**: What should Eugenia say before transferring to human?
+- **Out-of-Hours**: How to handle hot leads outside business hours?
+
+### FUB Workflow Integration
+- **Stage Automation**: Which FUB stages should Eugenia update automatically?
+- **Custom Fields**: What data points should she capture and populate?
+- **Tag Strategy**: Auto-tagging based on conversation outcomes?
+- **Pipeline Movement**: When to move leads between pipelines?
+
+### Feature Prioritization
+- **Voice Calling**: How important is AI phone calls vs just SMS?
+- **Multi-Agent Support**: Need for different personas/phone numbers?
+- **Analytics Depth**: What metrics matter most to you?
+- **Property Integration**: Pull listing data for personalized conversations?
+- **Team Features**: Multiple users accessing the system?
+
+### Business Impact Considerations
+- **Biggest Pain Point**: What manual task takes the most time currently?
+- **Success Metrics**: How do you measure ISA success?
+- **Competition**: What are other agents/ISAs doing that works?
+- **Differentiation**: What would make your follow-up stand out?
+
+---
+
 ## Key Requirements Summary
 
 ### Core MVP Flow:
