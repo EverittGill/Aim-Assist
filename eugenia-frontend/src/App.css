@@ -1,19 +1,222 @@
 /* src/App.css */
-/* Optional: Enhance scrollbar for a cleaner look in webkit browsers */
+/* Theme-aware scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-::-webkit-scrollbar-track {
-  background: #1e293b; /* slate-800 */
+/* Light theme scrollbar */
+[data-theme="eugenia"] ::-webkit-scrollbar-track {
+  background: hsl(var(--b2)); /* base-200 */
 }
 
-::-webkit-scrollbar-thumb {
-  background: #475569; /* slate-600 */
+[data-theme="eugenia"] ::-webkit-scrollbar-thumb {
+  background: hsl(var(--b3)); /* base-300 */
   border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #64748b; /* slate-500 */
+[data-theme="eugenia"] ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--n)); /* neutral */
+}
+
+/* Dark theme scrollbar */
+[data-theme="eugenia-dark"] ::-webkit-scrollbar-track {
+  background: hsl(var(--b2)); /* base-200 */
+}
+
+[data-theme="eugenia-dark"] ::-webkit-scrollbar-thumb {
+  background: hsl(var(--b3)); /* base-300 */
+  border-radius: 4px;
+}
+
+[data-theme="eugenia-dark"] ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--n)); /* neutral */
+}
+
+/* Beach theme scrollbar - MAXIMUM CONTRAST */
+[data-theme="eugenia-beach"] ::-webkit-scrollbar {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+[data-theme="eugenia-beach"] ::-webkit-scrollbar-track {
+  background: #FFFF00 !important;
+  border: 2px solid #000000 !important;
+}
+
+[data-theme="eugenia-beach"] ::-webkit-scrollbar-thumb {
+  background: #000000 !important;
+  border-radius: 0 !important;
+  border: 2px solid #FFFF00 !important;
+}
+
+[data-theme="eugenia-beach"] ::-webkit-scrollbar-thumb:hover {
+  background: #000000 !important;
+  border: 3px solid #FFFF00 !important;
+}
+
+/* Beach mode typography enhancements - MAXIMUM READABILITY */
+[data-theme="eugenia-beach"] {
+  /* Significantly increase base font size */
+  font-size: 120%;
+  line-height: 1.8;
+  font-family: Arial, Helvetica, Verdana, sans-serif !important;
+}
+
+/* Force ALL text to be bold in beach mode */
+[data-theme="eugenia-beach"] * {
+  font-weight: 700 !important;
+  letter-spacing: 0.02em;
+  text-shadow: none !important;
+}
+
+/* Increase heading sizes dramatically */
+[data-theme="eugenia-beach"] h1 {
+  font-size: 2.5rem !important;
+  font-weight: 900 !important;
+}
+
+[data-theme="eugenia-beach"] h2 {
+  font-size: 2rem !important;
+  font-weight: 900 !important;
+}
+
+[data-theme="eugenia-beach"] h3 {
+  font-size: 1.75rem !important;
+  font-weight: 900 !important;
+}
+
+/* Make all text at least 18px */
+[data-theme="eugenia-beach"] p,
+[data-theme="eugenia-beach"] span,
+[data-theme="eugenia-beach"] div {
+  font-size: max(1.125rem, 18px);
+}
+
+/* Extra large, high contrast buttons */
+[data-theme="eugenia-beach"] .btn {
+  padding: 1rem 2rem !important;
+  font-weight: 900 !important;
+  font-size: 1.125rem !important;
+  border: 3px solid #000000 !important;
+  border-radius: 0.25rem !important;
+  min-height: 3.5rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+[data-theme="eugenia-beach"] .btn-sm {
+  padding: 0.75rem 1.5rem !important;
+  font-size: 1rem !important;
+  min-height: 2.75rem !important;
+}
+
+[data-theme="eugenia-beach"] .btn-circle {
+  width: 3.5rem !important;
+  height: 3.5rem !important;
+  padding: 0 !important;
+}
+
+/* High contrast inputs with thick borders */
+[data-theme="eugenia-beach"] .input {
+  border: 3px solid #000000 !important;
+  font-weight: 900 !important;
+  font-size: 1.125rem !important;
+  min-height: 3.5rem !important;
+  background-color: #FFFF00 !important;
+  color: #000000 !important;
+}
+
+/* Fix search input in navbar for beach mode */
+[data-theme="eugenia-beach"] .navbar .input-sm {
+  min-height: 2.5rem !important;
+  font-size: 1rem !important;
+  padding-left: 2.5rem !important;
+}
+
+/* Remove all shadows and gradients */
+[data-theme="eugenia-beach"] * {
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+/* Ensure all backgrounds are solid yellow or black */
+[data-theme="eugenia-beach"] .bg-gradient-to-br {
+  background: #FFFF00 !important;
+}
+
+/* Modal with ultra thick borders */
+[data-theme="eugenia-beach"] .modal-box {
+  border: 5px solid #000000 !important;
+  background-color: #FFFF00 !important;
+}
+
+/* Remove all decorative elements */
+[data-theme="eugenia-beach"] .shadow-sm,
+[data-theme="eugenia-beach"] .shadow-md,
+[data-theme="eugenia-beach"] .shadow-lg,
+[data-theme="eugenia-beach"] .shadow-xl {
+  box-shadow: none !important;
+}
+
+/* Ensure links are clearly visible */
+[data-theme="eugenia-beach"] a {
+  color: #000000 !important;
+  text-decoration: underline !important;
+  text-decoration-thickness: 2px !important;
+  font-weight: 900 !important;
+}
+
+/* Remove opacity from all elements EXCEPT timestamps */
+[data-theme="eugenia-beach"] *:not(.group-hover\:opacity-100) {
+  opacity: 1 !important;
+}
+
+/* Keep timestamp hover behavior in beach mode */
+[data-theme="eugenia-beach"] .opacity-0 {
+  opacity: 0 !important;
+}
+
+/* Hide the bottom timestamp in beach mode */
+[data-theme="eugenia-beach"] .absolute.-bottom-5 {
+  display: none !important;
+}
+
+/* Show only the inline timestamp in beach mode */
+[data-theme="eugenia-beach"] .beach-timestamp {
+  display: none;
+}
+
+[data-theme="eugenia-beach"] .group:hover .beach-timestamp {
+  display: inline !important;
+  opacity: 1 !important;
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  color: #000000 !important;
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+/* Hide beach timestamp in other themes */
+[data-theme="eugenia"] .beach-timestamp,
+[data-theme="eugenia-dark"] .beach-timestamp {
+  display: none !important;
+}
+
+/* Thick borders on all cards and panels */
+[data-theme="eugenia-beach"] .rounded-lg,
+[data-theme="eugenia-beach"] .rounded-md {
+  border: 3px solid #000000 !important;
+  border-radius: 0.25rem !important;
+}
+
+/* Force black text on yellow background everywhere */
+[data-theme="eugenia-beach"] .text-base-content {
+  color: #000000 !important;
+}
+
+[data-theme="eugenia-beach"] .bg-base-100,
+[data-theme="eugenia-beach"] .bg-base-200 {
+  background-color: #FFFF00 !important;
 }

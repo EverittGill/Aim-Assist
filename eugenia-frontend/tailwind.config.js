@@ -2,7 +2,8 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "./src/**/*.{js,jsx,ts,tsx}", 
+    "./src/**/*.{js,jsx,ts,tsx}",
+    "./public/index.html",
   ],
   theme: {
     extend: {
@@ -90,6 +91,7 @@ module.exports = {
     require('daisyui'),
   ],
   daisyui: {
+    logs: false,
     themes: [
       {
         eugenia: {
@@ -109,6 +111,46 @@ module.exports = {
           "success": "#8BC34A", 
           "warning": "#FF9800",
           "error": "#F44336",
+        },
+      },
+      {
+        "eugenia-dark": {
+          "primary": "#D0B5A3",        // brand-400 (lighter for dark mode)
+          "primary-content": "#2A271F", // warm-900
+          "secondary": "#D2B397",      // accent-400 (lighter for dark mode)
+          "secondary-content": "#2A271F",
+          "accent": "#DCC4AD",         // accent-300 (lighter for dark mode)
+          "accent-content": "#2A271F",
+          "neutral": "#A8A19A",        // warm-600
+          "neutral-content": "#F8F6F2",
+          "base-100": "#2A271F",       // warm-900 (dark background)
+          "base-200": "#4A473F",       // warm-800
+          "base-300": "#73706A",       // warm-700
+          "base-content": "#F8F6F2",   // warm-100 (light text)
+          "info": "#64B5F6",           // lighter blue for dark mode
+          "success": "#AED581",        // lighter green for dark mode
+          "warning": "#FFB74D",        // lighter orange for dark mode
+          "error": "#E57373",          // lighter red for dark mode
+        },
+      },
+      {
+        "eugenia-beach": {
+          "primary": "#D84315",        // Bold orange - highly visible in sunlight
+          "primary-content": "#FFFFFF", // Pure white for max contrast
+          "secondary": "#005662",      // Deep teal - good contrast
+          "secondary-content": "#FFFFFF",
+          "accent": "#FF6F00",         // Bright amber - high visibility
+          "accent-content": "#000000",
+          "neutral": "#404040",        // Dark gray for borders
+          "neutral-content": "#FAFAF5",
+          "base-100": "#FAFAF5",       // Off-white to reduce glare
+          "base-200": "#F0F0E8",       // Slightly darker off-white
+          "base-300": "#E8E8E0",       // Light gray with warm tint
+          "base-content": "#1A1A1A",   // Deep charcoal for max contrast
+          "info": "#0277BD",           // Deep blue - high contrast
+          "success": "#2E7D32",        // Deep green - high contrast
+          "warning": "#E65100",        // Deep orange - high contrast
+          "error": "#C62828",          // Deep red - high contrast
         },
       },
     ],

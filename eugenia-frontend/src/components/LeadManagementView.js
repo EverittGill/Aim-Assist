@@ -152,8 +152,17 @@ const LeadManagementView = ({
                           ? 'bg-blue-500 text-white rounded-br-none' 
                           : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'
                       }`}>
-                        <div className={`text-xs mb-1 ${msg.sender === AI_SENDER_NAME ? 'text-blue-100' : 'text-gray-500'}`}>
-                          {msg.sender === AI_SENDER_NAME ? AI_SENDER_NAME : selectedLead.name}
+                        <div className={`text-xs mb-1 ${msg.sender === AI_SENDER_NAME ? 'text-blue-100' : 'text-gray-500'} flex items-center`}>
+                          <span>{msg.sender === AI_SENDER_NAME ? AI_SENDER_NAME : selectedLead.name}</span>
+                          {/* Beach mode inline timestamp */}
+                          <span className="beach-timestamp ml-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            {msg.timestamp ? new Date(msg.timestamp).toLocaleString([], { 
+                              month: 'short', 
+                              day: 'numeric', 
+                              hour: 'numeric', 
+                              minute: '2-digit' 
+                            }) : ''}
+                          </span>
                         </div>
                         <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.text}</p>
                       </div>

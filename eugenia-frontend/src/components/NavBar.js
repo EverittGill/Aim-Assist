@@ -1,15 +1,29 @@
 // src/components/NavBar.js
 import React from 'react';
-import { Search, Settings as SettingsIcon, LogOut, User } from 'lucide-react';
-import { AI_SENDER_NAME } from './constants';
+import { Search, Settings as SettingsIcon, LogOut, User, Sun, Moon, Waves } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 const NavBar = ({ onToggleSettings, onToggleLeadsPanel, user, onLogout, searchQuery, onSearchChange }) => {
+  const { toggleTheme, isDark, isBeach } = useTheme();
+  
+  const getThemeIcon = () => {
+    if (isDark) return <Sun size={20} />;
+    if (isBeach) return <Moon size={20} />;
+    return <Waves size={20} />;
+  };
+
+  const getThemeLabel = () => {
+    if (isDark) return "Switch to beach mode";
+    if (isBeach) return "Switch to light mode";
+    return "Switch to dark mode";
+  };
+
   return (
-    <nav className="navbar bg-warm-100/90 backdrop-blur-md shadow-warm-md border-b border-warm-200 md:sticky md:top-0 z-[51] px-6 py-3 min-h-[4rem]">
+    <nav className="navbar bg-base-200/90 backdrop-blur-md shadow-warm-md border-b border-base-300 md:sticky md:top-0 z-[51] px-6 py-3 min-h-[4rem]">
       <div className="w-full flex items-center justify-between">
         {/* Left side - Aim Assist title and future nav items */}
         <div className="flex items-center gap-8">
-          <span className="text-2xl font-bold text-brand-800 normal-case tracking-tight">
+          <span className="text-2xl font-bold text-primary normal-case tracking-tight">
             Aim Assist
           </span>
           {/* Space for future navigation items */}
@@ -19,11 +33,11 @@ const NavBar = ({ onToggleSettings, onToggleLeadsPanel, user, onLogout, searchQu
         <div className="flex items-center gap-4">
           {/* Search field */}
           <div className="form-control w-full max-w-xs relative">
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <Search size={16} className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-base-content/50 pointer-events-none z-10" />
             <input
               type="text"
               placeholder="Search leads..."
-              className="input input-bordered input-sm w-full bg-white/90 focus:bg-white pl-10 pr-3 h-9"
+              className="input input-bordered input-sm w-full bg-base-100/90 focus:bg-base-100 pl-9 pr-3 h-9"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
             />
@@ -31,13 +45,13 @@ const NavBar = ({ onToggleSettings, onToggleLeadsPanel, user, onLogout, searchQu
           
           {user && (
             <>
-              <div className="hidden sm:flex items-center gap-2 px-4 py-1.5 bg-brand-100/50 rounded-full">
-                <User size={16} className="text-brand-600" />
-                <span className="text-sm text-brand-700 font-medium">{user.email}</span>
+              <div className="hidden sm:flex items-center gap-2 px-4 py-1.5 bg-primary/20 rounded-full">
+                <User size={16} className="text-primary" />
+                <span className="text-sm text-primary font-medium">{user.email}</span>
               </div>
               <button 
                 onClick={onLogout}
-                className="btn btn-ghost btn-circle btn-sm w-9 h-9 text-warm-700 hover:text-error hover:bg-error-light/50 transition-colors duration-warm"
+                className="btn btn-ghost btn-circle btn-sm w-9 h-9 text-base-content hover:text-error hover:bg-error/20 transition-colors duration-warm"
                 aria-label="Logout"
                 title="Logout"
               >
@@ -46,10 +60,20 @@ const NavBar = ({ onToggleSettings, onToggleLeadsPanel, user, onLogout, searchQu
             </>
           )}
           
+          {/* Theme toggle */}
+          <button 
+            onClick={toggleTheme}
+            className="btn btn-ghost btn-circle btn-sm w-9 h-9 text-base-content hover:text-primary hover:bg-primary/20 transition-colors duration-warm"
+            aria-label={getThemeLabel()}
+            title={getThemeLabel()}
+          >
+            {getThemeIcon()}
+          </button>
+          
           {/* Settings button */}
           <button 
             onClick={onToggleSettings} 
-            className="btn btn-ghost btn-circle btn-sm w-9 h-9 text-warm-700 hover:text-brand-700 hover:bg-brand-100/50 transition-colors duration-warm"
+            className="btn btn-ghost btn-circle btn-sm w-9 h-9 text-base-content hover:text-primary hover:bg-primary/20 transition-colors duration-warm"
             aria-label="Settings"
             title="Settings"
           >

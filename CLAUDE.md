@@ -29,7 +29,11 @@ node server.js      # Start Express server on port 3001
 
 ### Frontend
 - **React 19.1.0** application with Create React App
-- **Tailwind CSS + DaisyUI** for styling
+- **Tailwind CSS + DaisyUI** for styling with custom theme system
+- **Theme System**: Three themes - Light (warm tan/caramel), Dark, and Beach Mode (high contrast for sunlight)
+  - Theme context in `src/contexts/ThemeContext.js` with localStorage persistence
+  - Custom DaisyUI themes defined in `tailwind.config.js` and `src/daisyui-themes.css`
+  - Beach Mode: Pure yellow (#FFFF00) background with black text for maximum sunlight readability
 - **Components**: Lead management UI with modals, lists, and detail views
 - **Services**: 
   - `apiService.js`: Backend API integration
@@ -305,3 +309,39 @@ When an SMS arrives at Eugenia's Twilio number:
 4. **Observability**: Real-time queue stats and error tracking
 5. **Scalability**: Concurrent message processing with worker pools
 6. **Production Ready**: Professional error handling and monitoring
+
+### Theme System Implementation (Added 2025-01-18)
+**Beach Mode Feature**: Created for maximum readability when using the app in direct sunlight
+- **Problem**: User often works at the beach with intense sunlight on screen
+- **Solution**: Implemented 3-theme system with special "Beach Mode"
+  
+**Technical Implementation**:
+1. **Theme Context** (`src/contexts/ThemeContext.js`):
+   - Manages theme state with localStorage persistence
+   - Cycles through: Light → Dark → Beach → Light
+   - Provides `toggleTheme()` and theme state flags
+
+2. **Custom DaisyUI Configuration**:
+   - Fixed DaisyUI not loading in CRA by creating `src/daisyui-themes.css`
+   - Defined custom themes in `tailwind.config.js` (separated into array items)
+   - Beach Mode uses pure yellow (#FFFF00) background with black text
+
+3. **Beach Mode Specific Enhancements** (`src/App.css`):
+   - 120% base font size, all text bold (700+ font-weight)
+   - Extra large buttons with 3px black borders
+   - Removed all shadows, gradients, and decorative elements
+   - Timestamps appear inline next to sender name (not below message)
+   - Wider scrollbars (16px) with high contrast
+
+4. **Search Bar Fix** (`src/search-fix.css`):
+   - Fixed magnifying glass icon overlap with proper padding
+   - Ensured consistent styling across all themes
+   - Beach mode: 2px black border on yellow background
+
+**Files Modified**:
+- `src/contexts/ThemeContext.js` - Theme state management
+- `src/components/NavBar.js` - Theme toggle button with dynamic icons
+- `src/daisyui-themes.css` - Custom theme definitions and base styles
+- `src/App.css` - Beach mode specific overrides
+- `src/search-fix.css` - Search input styling fixes
+- `tailwind.config.js` - DaisyUI theme configuration

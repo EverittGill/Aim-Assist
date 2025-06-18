@@ -332,7 +332,7 @@ const App = ({ user, onLogout }) => {
     : [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-warm-50 to-warm-100 text-warm-900 font-sans flex flex-col" data-theme="eugenia">
+    <div className="min-h-screen bg-gradient-to-br from-base-100 to-base-200 text-base-content font-sans flex flex-col">
       <NavBar 
         onToggleSettings={() => setIsSettingsOpen(prev => !prev)} 
         user={user}
@@ -407,7 +407,7 @@ const App = ({ user, onLogout }) => {
         isAnyActionInProgress={isAnyActionInProgress}
       />
 
-      <footer className="text-center p-4 text-sm text-warm-600 border-t border-warm-200 mt-auto bg-warm-50/50"> 
+      <footer className="text-center p-4 text-sm text-base-content/60 border-t border-base-300 mt-auto bg-base-100/50"> 
         FUB {AI_SENDER_NAME} ISA v1.0.0 - AI Backend Integration 
       </footer>
     </div>

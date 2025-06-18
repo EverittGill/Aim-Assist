@@ -1,0 +1,52 @@
+/* Search bar specific styles */
+.navbar .form-control {
+  position: relative;
+  width: 100%;
+  max-width: 20rem;
+}
+
+.navbar .form-control input {
+  width: 100%;
+  height: 2.25rem;
+  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: hsl(var(--bc));
+  background-color: hsl(var(--b1));
+  border: 1px solid hsl(var(--bc) / 0.2);
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+}
+
+.navbar .form-control input:focus {
+  outline: none;
+  border-color: hsl(var(--p));
+  box-shadow: 0 0 0 3px hsl(var(--p) / 0.1);
+}
+
+.navbar .form-control .lucide-search {
+  position: absolute;
+  left: 0.625rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  color: hsl(var(--bc) / 0.5);
+  pointer-events: none;
+}
+
+/* Beach mode search */
+[data-theme="eugenia-beach"] .navbar .form-control input {
+  background-color: #FFFF00;
+  color: #000000;
+  border: 2px solid #000000;
+  height: 2.5rem;
+  font-weight: 700;
+  padding-left: 2.5rem;
+}
+
+[data-theme="eugenia-beach"] .navbar .form-control .lucide-search {
+  color: #000000;
+  width: 1.25rem;
+  height: 1.25rem;
+}
