@@ -123,8 +123,8 @@ class ConversationService {
       return "No previous conversation history.";
     }
     
-    // Take the most recent messages (AI doesn't need ancient history)
-    const recentMessages = messages.slice(-50); // Last 50 messages
+    // Send ALL messages - full context retention is our key feature!
+    const recentMessages = messages;
     
     return recentMessages.map(msg => {
       const date = new Date(msg.timestamp).toLocaleString('en-US', {

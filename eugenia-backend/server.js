@@ -134,6 +134,7 @@ app.use('/api/leads', routes.leads);
 app.use('/api', routes.ai);
 app.use('/webhook', routes.webhooks);
 app.use('/api/prompts', routes.prompts);
+app.use('/api/dev-mode', routes.devMode);
 
 // Debug route for testing Sentry
 app.get('/debug-sentry', function mainHandler(req, res) {

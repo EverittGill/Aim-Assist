@@ -246,6 +246,7 @@ const LeadManagementView = ({
                           value={simulateLeadReply ? leadReply : geminiMessage}
                           onChange={(e) => simulateLeadReply ? onLeadReplyChange(e.target.value) : onGeminiMessageChange(e.target.value)}
                           placeholder={simulateLeadReply ? `Type a message as ${selectedLead.name}...` : "Type a message as Eugenia..."}
+                          maxLength={1600}
                           className={`input input-bordered flex-1 bg-white border-warm-300 focus:border-brand-500 ${
                             simulateLeadReply ? 'border-green-300 focus:border-green-500' : ''
                           }`}

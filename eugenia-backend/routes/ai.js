@@ -4,6 +4,9 @@ const router = express.Router();
 let eugeniaMessageCount = 0;
 
 module.exports = (geminiService, twilioService, fubService, conversationService, requireAuth) => {
+  // Initialize notification service
+  const NotificationService = require('../services/notificationService');
+  const notificationService = new NotificationService(twilioService, fubService);
   router.post('/generate-initial-message', requireAuth, async (req, res) => {
     if (!geminiService) {
       return res.status(503).json({ error: 'AI service not configured' });
@@ -38,10 +41,36 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
 
     try {
       const finalAgencyName = agencyName || process.env.USER_AGENCY_NAME || 'Our Agency';
+      
+      // If we have FUB service, fetch full lead context
+      let fullLeadContext = null;
+      if (fubService && leadDetails.id) {
+        try {
+          const lead = await fubService.getLeadById(leadDetails.id);
+          fullLeadContext = {
+            id: lead.id,
+            name: lead.name,
+            firstName: lead.firstName,
+            lastName: lead.lastName,
+            email: lead.emails?.[0]?.value,
+            phone: lead.phones?.[0]?.value,
+            source: lead.source,
+            stage: lead.stage,
+            tags: lead.tags,
+            notes: lead.background,
+            customFields: lead.customFields,
+            created: lead.created
+          };
+        } catch (error) {
+          console.log('Could not fetch full lead context:', error.message);
+        }
+      }
+      
       const result = await geminiService.generateConversationReply(
         leadDetails, 
         conversationHistory, 
-        finalAgencyName
+        finalAgencyName,
+        fullLeadContext
       );
       res.json(result);
     } catch (error) {
@@ -53,6 +82,10 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
   router.post('/send-ai-message', requireAuth, async (req, res) => {
     eugeniaMessageCount++;
     console.log(`\n📨 EUGENIA MESSAGE SEND REQUEST #${eugeniaMessageCount} ========================`);
+    console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`   Lead ID: ${req.body.leadId}`);
+    console.log(`   Phone: ${req.body.leadPhoneNumber}`);
+    
     if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_PRODUCTION_SMS) {
       return res.status(403).json({ error: 'SMS disabled in production for lead safety' });
     }
@@ -178,12 +211,17 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
       }
       
       let eugeniaStatus = 'active';
+      let isPaused = false;
+      
       if (fubService) {
         try {
           const lead = await fubService.getLeadById(leadId);
           const statusField = process.env.FUB_EUGENIA_TALKING_STATUS_FIELD_NAME || 'customEugeniaTalkingStatus';
           eugeniaStatus = lead[statusField] || 'active';
           console.log(`Eugenia status for lead ${leadId}: ${eugeniaStatus}`);
+          
+          // Check if lead is in temporary pause
+          isPaused = await notificationService.isLeadPaused(leadId);
         } catch (error) {
           console.error('Failed to check Eugenia status:', error.message);
         }
@@ -191,7 +229,8 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
       
       let aiMessage = null;
       let shouldAutoPause = false;
-      if (geminiService && eugeniaStatus === 'active') {
+      let result = null;
+      if (geminiService && eugeniaStatus === 'active' && !isPaused) {
         try {
           console.log(`🧠 Building complete context for lead ${leadId}...`);
           
@@ -217,17 +256,57 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
           console.log(`🎯 Final context: ${contextToUse.length} messages for lead ${leadName}`);
           
           const agencyName = process.env.USER_AGENCY_NAME || 'Our Agency';
-          const result = await geminiService.generateConversationReply(
-            { id: leadId, name: leadName }, 
+          
+          // Use lead context if available, otherwise use basic info
+          const leadDetailsForAI = leadContext || { id: leadId, name: leadName };
+          
+          result = await geminiService.generateConversationReply(
+            leadDetailsForAI, 
             contextToUse,
             agencyName,
             leadContext
           );
           
-          aiMessage = result.message;
-          shouldAutoPause = result.shouldAutoPause;
+          console.log('🔍 AI Generation Result:', {
+            hasResult: !!result,
+            hasMessage: !!result?.message,
+            messageLength: result?.message?.length || 0,
+            shouldPause: result?.shouldPause,
+            isQualificationComplete: result?.isQualificationComplete
+          });
           
-          console.log(`🤖 Generated AI response: "${aiMessage.substring(0, 50)}..."`);
+          aiMessage = result.message;
+          shouldAutoPause = result.shouldPause;
+          
+          if (aiMessage) {
+            console.log(`🤖 Generated AI response: "${aiMessage.substring(0, 50)}..."`);
+          } else {
+            console.log('⚠️ No AI message generated!');
+          }
+          
+          // Handle qualification completion
+          if (result.isQualificationComplete && result.qualificationStatus && notificationService) {
+            console.log(`🎯 Lead ${leadName} has completed qualification!`);
+            
+            // Update qualification status in FUB
+            const qualificationService = require('../services/qualificationService');
+            await qualificationService.updateQualificationStatus(leadId, result.qualificationStatus);
+            
+            // Send notification to agent
+            await qualificationService.notifyAgentForQualification(leadDetailsForAI, result.qualificationStatus);
+            
+            // Store follow-up message if provided
+            if (result.followUpMessage) {
+              console.log('📤 Storing Eugenia follow-up message:', result.followUpMessage);
+              // Store the follow-up message in conversation
+              await fubService.addMessageToLeadStorage(leadId, {
+                direction: 'outbound',
+                type: 'ai',
+                content: result.followUpMessage,
+                timestamp: new Date().toISOString()
+              });
+            }
+          }
           
           if (aiMessage && fubService) {
             // Store in FUB notes
@@ -278,16 +357,18 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
           console.error('Error building conversation context:', contextError);
           const leadDetails = { id: leadId, name: leadName };
           const agencyName = process.env.USER_AGENCY_NAME || 'Our Agency';
-          const result = await geminiService.generateConversationReply(
+          result = await geminiService.generateConversationReply(
             leadDetails, 
             currentConversation, 
             agencyName
           );
           aiMessage = result.message;
-          shouldAutoPause = result.shouldAutoPause;
+          shouldAutoPause = result.shouldPause;
         }
       } else if (eugeniaStatus === 'inactive') {
         console.log(`🚫 Eugenia is paused for lead ${leadId}. No AI response generated.`);
+      } else if (isPaused) {
+        console.log(`⏸️ Eugenia is temporarily paused for lead ${leadId}. No AI response generated.`);
       }
       
       res.json({ 
@@ -297,7 +378,9 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
         eugeniaPaused: eugeniaStatus === 'inactive',
         message: eugeniaStatus === 'inactive' 
           ? 'Message logged. Eugenia is paused for this lead.' 
-          : 'Incoming message logged successfully'
+          : 'Incoming message logged successfully',
+        followUpMessage: result?.followUpMessage || null,
+        isQualificationComplete: result?.isQualificationComplete || false
       });
     } catch (error) {
       console.error('Error processing incoming message:', error);

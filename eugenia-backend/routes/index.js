@@ -8,6 +8,7 @@ module.exports = (services) => {
     leads: require('./leads')(fubService, conversationService, requireAuth),
     ai: require('./ai')(geminiService, twilioService, fubService, conversationService, requireAuth),
     webhooks: require('./webhooks')(twilioService, fubService, geminiService, conversationService),
-    prompts: require('./prompts')(requireAuth)
+    prompts: require('./prompts')(requireAuth),
+    devMode: require('./devMode')(requireAuth)
   };
 };

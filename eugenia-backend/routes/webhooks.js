@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 
 module.exports = (twilioService, fubService, geminiService, conversationService) => {
+  // Initialize notification service
+  const NotificationService = require('../services/notificationService');
+  const notificationService = new NotificationService(twilioService, fubService);
   router.post('/twilio-sms', express.raw({ type: 'application/x-www-form-urlencoded' }), async (req, res) => {
     if (!twilioService) {
       return res.status(503).send('SMS service not configured');
@@ -74,13 +77,16 @@ module.exports = (twilioService, fubService, geminiService, conversationService)
       }
       
       // 3. Check if AI is paused for this lead
-      const isPaused = lead.customFields?.find(
+      const statusField = lead.customFields?.find(
         cf => cf.name === process.env.FUB_EUGENIA_TALKING_STATUS_FIELD_NAME
-      )?.value === 'inactive';
+      )?.value;
+      const isPermanentlyPaused = statusField === 'inactive';
       
-      if (isPaused) {
-        console.log('AI is paused for this lead, not generating response');
-        // TODO: Send notification to agent that paused lead messaged
+      // Check temporary pause
+      const isTemporarilyPaused = await notificationService.isLeadPaused(lead.id);
+      
+      if (isPermanentlyPaused || isTemporarilyPaused) {
+        console.log(`AI is ${isPermanentlyPaused ? 'permanently' : 'temporarily'} paused for lead ${lead.name}`);
         return res.status(200).send('<Response></Response>');
       }
       
@@ -88,10 +94,27 @@ module.exports = (twilioService, fubService, geminiService, conversationService)
       const conversationHistory = await conversationService.getConversationHistory(lead.id);
       console.log(`Fetched ${conversationHistory.length} messages from conversation history`);
       
-      // 5. Generate AI response
+      // 5. Generate AI response with full lead context
       const agencyName = process.env.USER_AGENCY_NAME || 'Our Agency';
+      
+      // Extract full lead context
+      const fullLeadContext = {
+        id: lead.id,
+        name: lead.name,
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        email: lead.emails?.[0]?.value,
+        phone: lead.phones?.[0]?.value,
+        source: lead.source,
+        stage: lead.stage,
+        tags: lead.tags,
+        notes: lead.background,
+        customFields: lead.customFields,
+        created: lead.created
+      };
+      
       const aiResponse = await geminiService.generateReply(
-        lead,
+        fullLeadContext,
         conversationHistory,
         incomingMessage.body,
         agencyName
@@ -104,6 +127,34 @@ module.exports = (twilioService, fubService, geminiService, conversationService)
       
       console.log('AI Response:', aiResponse.message);
       console.log('Should Pause:', aiResponse.shouldPause);
+      
+      // Handle qualification completion
+      if (aiResponse.isQualificationComplete && aiResponse.qualificationStatus && notificationService) {
+        console.log('🎯 Lead qualification complete via webhook');
+        
+        // Update qualification status in FUB
+        const qualificationService = require('../services/qualificationService');
+        await qualificationService.updateQualificationStatus(lead.id, aiResponse.qualificationStatus);
+        
+        // Send notification to agent
+        await qualificationService.notifyAgentForQualification(fullLeadContext, aiResponse.qualificationStatus);
+        
+        // If there's a follow-up message, queue it first
+        if (aiResponse.followUpMessage) {
+          console.log('📤 Queueing Eugenia follow-up message:', aiResponse.followUpMessage);
+          await twilioService.queueSMS(
+            incomingMessage.from,
+            aiResponse.followUpMessage,
+            {
+              leadId: lead.id,
+              direction: 'outbound',
+              fromNumber: incomingMessage.to,
+              delay: 2000, // Send follow-up quickly after main response
+              priority: 0  // High priority
+            }
+          );
+        }
+      }
       
       // 6. Queue AI response with natural delay
       try {

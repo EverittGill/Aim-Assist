@@ -12,7 +12,25 @@ class TwilioService {
 
   async sendSMS(toNumber, message) {
     try {
-      console.log(`Sending SMS to ${toNumber}: ${message}`);
+      console.log(`📱 SENDING SMS ========================`);
+      console.log(`   To: ${toNumber}`);
+      console.log(`   From: ${this.fromNumber}`);
+      console.log(`   Message: "${message.substring(0, 50)}..."`);
+      console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+      
+      // Check if we're in development mode without explicit SMS allowance
+      if (process.env.NODE_ENV !== 'production' && !process.env.ALLOW_DEV_SMS) {
+        console.log(`⚠️  [DEV MODE] SMS sending simulated - not actually sent`);
+        console.log(`   To enable: Set ALLOW_DEV_SMS=true in .env`);
+        return {
+          success: true,
+          messageSid: 'DEV_MODE_' + Date.now(),
+          status: 'simulated',
+          to: toNumber,
+          from: this.fromNumber,
+          simulated: true
+        };
+      }
       
       const messageResult = await this.client.messages.create({
         body: message,
@@ -20,7 +38,7 @@ class TwilioService {
         to: toNumber
       });
 
-      console.log(`SMS sent successfully. SID: ${messageResult.sid}`);
+      console.log(`✅ SMS sent successfully. SID: ${messageResult.sid}`);
       return {
         success: true,
         messageSid: messageResult.sid,
@@ -29,7 +47,9 @@ class TwilioService {
         from: messageResult.from
       };
     } catch (error) {
-      console.error('Error sending SMS:', error);
+      console.error('❌ Error sending SMS:', error.message);
+      console.error('   Error code:', error.code);
+      console.error('   Status:', error.status);
       throw new Error(`Failed to send SMS: ${error.message}`);
     }
   }

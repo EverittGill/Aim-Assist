@@ -1,0 +1,21 @@
+🔑 Gemini API key provided: AIzaSyB5Gx...
+🔧 Gemini Configuration: {
+  temperature: 0.7,
+  topK: 40,
+  topP: 0.9,
+  maxOutputTokens: 1000,
+  envValue: '1000'
+}
+Gemini configured with temperature: 0.7
+Gemini service initialized successfully
+Twilio service initialized successfully
+FUB service initialized successfully
+Conversation service initialized successfully
+Auth service initialized successfully
+Bull queues initialized successfully
+Queue processors initialized
+🛠️ Dev mode auto-enabled for Test Lead 470
+Eugenia Backend server is running on http://localhost:3001
+Queue monitoring available at http://localhost:3001/api/queues/stats
+✅ Custom prompts loaded: [ 'conversationReply', 'lastUpdated', 'escalationKeywords' ]
+Prompts loaded successfully

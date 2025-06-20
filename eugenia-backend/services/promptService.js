@@ -26,8 +26,10 @@ class PromptService {
       try {
         const customData = await fs.readFile(this.customPromptsFile, 'utf8');
         this.customPrompts = JSON.parse(customData);
+        console.log('✅ Custom prompts loaded:', Object.keys(this.customPrompts));
       } catch (err) {
         // No custom prompts yet
+        console.log('⚠️ No custom prompts found, using defaults');
         this.customPrompts = {};
       }
 
@@ -103,6 +105,10 @@ class PromptService {
       'utf8'
     );
 
+    // Reload prompts to ensure they're in memory
+    await this.loadPrompts();
+    console.log('✅ Prompts reloaded after update');
+
     return { success: true, message: 'Prompt updated successfully' };
   }
 
@@ -122,6 +128,10 @@ class PromptService {
       JSON.stringify(this.customPrompts, null, 2),
       'utf8'
     );
+
+    // Reload prompts to ensure they're in memory
+    await this.loadPrompts();
+    console.log('✅ Prompts reloaded after keywords update');
 
     return { success: true, message: 'Escalation keywords updated' };
   }
@@ -146,22 +156,66 @@ class PromptService {
    * Get the actual prompt function for execution
    */
   getExecutablePrompt(promptName) {
+    console.log(`🔍 getExecutablePrompt called for: ${promptName}`);
+    console.log(`🔍 Custom prompts available: ${this.customPrompts ? Object.keys(this.customPrompts) : 'none'}`);
+    
     // If there's a custom prompt, create a function from it
     if (this.customPrompts?.[promptName]) {
+      console.log(`✅ Using CUSTOM prompt for ${promptName}`);
       try {
         // Custom prompts are stored as template strings
         const template = this.customPrompts[promptName];
+        console.log(`📝 Using custom prompt template for ${promptName}, length: ${template.length} chars`);
         
         // Create a function that returns the template with substitutions
         return (params) => {
           let result = template;
+          let substitutionCount = 0;
           
-          // Replace all template variables
-          Object.keys(params).forEach(key => {
-            const regex = new RegExp(`\\$\\{${key}\\}`, 'g');
-            result = result.replace(regex, params[key]);
+          // Helper function to get nested property value
+          const getNestedValue = (obj, path) => {
+            const keys = path.split('.');
+            let value = obj;
+            
+            for (const key of keys) {
+              if (value && typeof value === 'object' && key in value) {
+                value = value[key];
+              } else {
+                return undefined;
+              }
+            }
+            
+            return value;
+          };
+          
+          // Replace template variables including nested properties and expressions
+          result = result.replace(/\$\{([^}]+)\}/g, (match, expression) => {
+            // Handle expressions with || for fallback values
+            const parts = expression.split('||').map(part => part.trim());
+            
+            for (const part of parts) {
+              // Check if it's a simple key or nested property
+              const value = getNestedValue(params, part);
+              
+              if (value !== undefined && value !== null && value !== '') {
+                substitutionCount++;
+                console.log(`✅ Substituting ${match} with value of length ${typeof value === 'string' ? value.length : 'non-string'}`);
+                return value;
+              }
+              
+              // Check if it's a quoted string (fallback value)
+              if (part.startsWith('"') && part.endsWith('"')) {
+                substitutionCount++;
+                return part.slice(1, -1);
+              }
+            }
+            
+            // If no value found, return the original placeholder
+            console.warn(`⚠️ No value found for template variable: ${match}, params keys: ${Object.keys(params).join(', ')}`);
+            return match;
           });
           
+          console.log(`✅ Custom prompt ready: ${substitutionCount} variables substituted, final length: ${result.length} chars`);
           return result;
         };
       } catch (error) {
@@ -169,6 +223,7 @@ class PromptService {
       }
     }
 
+    console.log(`📝 Using default prompt function for ${promptName}`);
     // Return default prompt function
     return this.defaultPrompts.ISA_PROMPTS[promptName];
   }

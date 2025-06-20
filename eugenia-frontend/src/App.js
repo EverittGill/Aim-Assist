@@ -144,6 +144,19 @@ const App = ({ user, onLogout }) => {
 
   const handleSendEugeniaMessage = async (lead, messageText) => { 
     if (!lead || !messageText) { handleSystemMessage('error', 'Lead or message text missing.'); return; }
+    
+    // Validate message length for SMS (160 chars for single SMS, 1600 for concatenated)
+    if (messageText.length > 1600) {
+      handleSystemMessage('error', `Message too long (${messageText.length} chars). SMS limit is 1600 characters.`); 
+      return;
+    }
+    
+    // Warn if message is long
+    if (messageText.length > 160) {
+      const segmentCount = Math.ceil(messageText.length / 153); // SMS segments are 153 chars when concatenated
+      handleSystemMessage('warning', `Long message will be sent as ${segmentCount} SMS segments (${messageText.length} chars)`);
+    }
+    
     setIsSending(true);
     handleSystemMessage('info', `Sending ${AI_SENDER_NAME}'s message...`);
     try {
@@ -187,7 +200,15 @@ const App = ({ user, onLogout }) => {
           setGeminiMessage(response.aiMessage);
           // Also add the AI response to conversation history
           addMessageToConversation(selectedLead.id, AI_SENDER_NAME, response.aiMessage);
-          handleSystemMessage('success', `Lead reply logged. ${AI_SENDER_NAME} generated next message.`);
+          
+          // Handle qualification completion and follow-up message
+          if (response.isQualificationComplete && response.followUpMessage) {
+            // Add follow-up message to conversation history
+            addMessageToConversation(selectedLead.id, AI_SENDER_NAME, response.followUpMessage);
+            handleSystemMessage('success', `🎯 Lead qualified! ${AI_SENDER_NAME} will notify Everitt to call them.`);
+          } else {
+            handleSystemMessage('success', `Lead reply logged. ${AI_SENDER_NAME} generated next message.`);
+          }
         } else {
           handleSystemMessage('info', 'Lead reply logged, but no AI response generated.');
         }

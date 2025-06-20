@@ -78,5 +78,46 @@ module.exports = function(requireAuth) {
     }
   });
 
+  // Test prompt substitution
+  router.post('/test/:promptName', requireAuth, async (req, res) => {
+    try {
+      const { promptName } = req.params;
+      const { testData } = req.body;
+
+      const promptFunc = promptService.getExecutablePrompt(promptName);
+      if (!promptFunc) {
+        return res.status(404).json({ error: 'Prompt not found' });
+      }
+
+      // Use test data or default test data
+      const params = testData || {
+        agencyName: 'Test Agency',
+        leadDetails: {
+          id: '123',
+          name: 'John Doe',
+          firstName: 'John',
+          tags: ['buyer', 'motivated'],
+          source: 'website'
+        },
+        conversationHistory: 'John: Hi, I\'m interested in homes\nEugenia: Hi John! Great to hear from you.',
+        currentMessage: 'What areas do you cover?',
+        messageCount: 2,
+        totalMessages: 3
+      };
+
+      const result = promptFunc(params);
+      
+      res.json({ 
+        success: true, 
+        prompt: result,
+        length: result.length,
+        estimatedTokens: Math.ceil(result.length / 4)
+      });
+    } catch (error) {
+      console.error('Error testing prompt:', error);
+      res.status(500).json({ error: 'Failed to test prompt' });
+    }
+  });
+
   return router;
 };
