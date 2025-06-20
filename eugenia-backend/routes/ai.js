@@ -430,7 +430,7 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
       // Generate initial messages and send
       const outreachResults = [];
       const agencyName = process.env.USER_AGENCY_NAME || 'Our Agency';
-      const appDomain = process.env.APP_DOMAIN || 'https://eugenia-app.com';
+      const appDomain = process.env.APP_DOMAIN || 'http://localhost:3000';
       
       for (const result of processingResults.successful) {
         const lead = result.lead;

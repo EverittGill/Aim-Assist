@@ -97,10 +97,10 @@ GEMINI_TOP_P=0.9                # Cumulative probability threshold (default: 0.9
 GEMINI_MAX_TOKENS=256           # Max response length in tokens (default: 256)
 
 # SMS Integration (Twilio)
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_FROM_NUMBER=+18662981158  # Eugenia's phone number
-USER_NOTIFICATION_PHONE=+19047805602  # Your phone for 3-message limit alerts
+TWILIO_ACCOUNT_SID=ACd3662d43b55d8fc8014b95529df92c77
+TWILIO_AUTH_TOKEN=cc0a304d764c9a17e73a10c83cd41ef9
+TWILIO_FROM_NUMBER=+18662981158  # Eugenia's toll-free verified number
+USER_NOTIFICATION_PHONE=+19047805602  # Your phone for qualified lead alerts
 ALLOW_DEV_SMS=true  # Set to true to actually send SMS in development mode
 
 # Database Integration (Airtable - future)
@@ -237,12 +237,23 @@ The entire reason for building this app is that Raiya Text ($400/month) doesn't 
 - Backend: Digital Ocean App Platform (user's preference)
 - Database: FUB as primary, Airtable as future backup
 
-### Twilio Webhook Configuration
-Configure these URLs in Twilio Console for your phone number (+18662981158):
-- **Incoming SMS Webhook**: `https://your-domain.com/webhook/twilio-sms` (HTTP POST)
-- **Status Callback**: `https://your-domain.com/webhook/twilio-status` (optional)
-- **Local Testing**: Use ngrok to expose local server: `ngrok http 3001`
-- **Development Mode**: Set `NODE_ENV=development` to bypass signature validation
+### Twilio Webhook Configuration (UPDATED 2025-01-20)
+**Phone Number**: +18662981158 (Toll-free, SMS capable, Verified)
+
+Configure these URLs in Twilio Console:
+- **Development (ngrok)**: `https://[your-ngrok-subdomain].ngrok.io/webhook/twilio-sms`
+- **Production**: `https://[your-app-name]-backend.ondigitalocean.app/webhook/twilio-sms`
+- **HTTP Method**: POST
+- **Status Callback**: Optional
+
+**Local Testing Quick Start**:
+1. Start backend: `cd eugenia-backend && npm start`
+2. Start ngrok: `ngrok http 3001`
+3. Copy HTTPS URL from ngrok output
+4. Configure in Twilio Console under Phone Numbers → +18662981158
+5. Test with SMS from +17068184445 to +18662981158
+
+**Development Mode**: `NODE_ENV=development` bypasses signature validation
 
 ### Phone Number Matching System (Implemented 2025-01-17)
 **Phone Normalization:**
@@ -462,32 +473,39 @@ npm run clear:history    # Clear conversation history
 npm run reset:status     # Reset status fields
 ```
 
-### Current Issues (2025-01-20)
+### Current Status (2025-01-20)
 
-#### Gemini Empty Response Issue (RESOLVED)
-**Problem**: Gemini API returns response object but text is empty with `finishReason: MAX_TOKENS`
-**Symptoms**:
-- Response has all expected properties (candidates, usageMetadata, etc.)
-- `response.text()` returns empty string
-- `finishReason: 'MAX_TOKENS'` in candidate details
-- No error thrown, just empty content
+#### Working Features
+- **AI Conversations**: Gemini 2.0 Flash generating contextual responses ✅
+- **Conversation Memory**: Full history passed to AI for context retention ✅
+- **Custom Prompts**: Editable prompts in `customPrompts.json` ✅
+- **SMS Length**: Responses stay under 160 characters ✅
+- **Lead Qualification**: Tracks timeline, agent status, and financing ✅
 
-**Root Cause**:
-- When Gemini hits the `maxOutputTokens` limit, it returns EMPTY content instead of truncated content
-- SMS messages should be under 160 characters (≈ 40-80 tokens)
-- Setting `GEMINI_MAX_TOKENS=600` was way too high for SMS responses
-- The prompts specify "Under 160 characters" but Gemini was configured for 600 tokens
+#### Known Issues
+- **Response Style**: Eugenia's responses are somewhat robotic and repetitive
+  - Starts every message with "Hi [name], Eugenia here!"
+  - Asks too many questions at once
+  - Needs prompt refinement for more natural conversation
+
+#### Gemini Configuration (RESOLVED)
+**Issue**: Empty responses with `finishReason: MAX_TOKENS`
+**Root Cause**: 
+- Wrong model name (`gemini-2.5-flash` → `gemini-2.0-flash-exp`)
+- Token limits vs prompt length mismatch
+- Custom prompt not being loaded properly
 
 **Solution**:
-- Changed `GEMINI_MAX_TOKENS=80` in `.env` file
-- Updated default in `geminiService.js` from 256 to 80 tokens
-- Added explanatory comments about token-to-character conversion
-- Restarted backend server to apply changes
+- Updated to `gemini-2.0-flash-exp` model
+- Set `GEMINI_MAX_TOKENS=1000` in .env
+- Optimized custom prompt from ~1,600 to ~420 characters
+- Removed unnecessary 85+ tag list from prompt
 
-**Key Learning**:
-- Gemini's behavior when hitting token limits is to return empty content, not truncated content
-- For SMS applications, keep `maxOutputTokens` between 40-80 to ensure complete responses
-- 1 token ≈ 4 characters, so 160 character SMS ≈ 40 tokens
+**Key Settings**:
+- Model: `gemini-2.0-flash-exp`
+- Max Output Tokens: 1000
+- Temperature: 0.7
+- Custom prompt: ~420 characters
 
 ## How This Project Works
 
