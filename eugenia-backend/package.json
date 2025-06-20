@@ -24,6 +24,7 @@
   "author": "Everitt Gill",
   "license": "MIT",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.54.0",
     "@google/generative-ai": "^0.24.1",
     "@sentry/node": "^9.30.0",
     "bcryptjs": "^3.0.2",

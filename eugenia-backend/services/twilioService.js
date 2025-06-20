@@ -32,9 +32,13 @@ class TwilioService {
         };
       }
       
+      // Always use the configured FROM number, not any number from the webhook
+      const fromNumber = this.fromNumber;
+      console.log(`   ✅ Using configured FROM number: ${fromNumber}`);
+      
       const messageResult = await this.client.messages.create({
         body: message,
-        from: this.fromNumber,
+        from: fromNumber,
         to: toNumber
       });
 

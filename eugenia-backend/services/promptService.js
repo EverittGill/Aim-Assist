@@ -10,8 +10,10 @@ class PromptService {
   constructor() {
     this.promptsFile = path.join(__dirname, '../prompts/isaPrompts.js');
     this.customPromptsFile = path.join(__dirname, '../prompts/customPrompts.json');
+    this.isaCoreFile = path.join(__dirname, '../prompts/isaCore.md');
     this.defaultPrompts = null;
     this.customPrompts = null;
+    this.isaCoreInstructions = null;
     this.loadPrompts();
   }
 
@@ -31,6 +33,15 @@ class PromptService {
         // No custom prompts yet
         console.log('⚠️ No custom prompts found, using defaults');
         this.customPrompts = {};
+      }
+
+      // Load ISA core instructions
+      try {
+        this.isaCoreInstructions = await fs.readFile(this.isaCoreFile, 'utf8');
+        console.log(`✅ ISA core instructions loaded: ${this.isaCoreInstructions.length} characters`);
+      } catch (err) {
+        console.log('⚠️ ISA core instructions not found');
+        this.isaCoreInstructions = '';
       }
 
       console.log('Prompts loaded successfully');
@@ -190,6 +201,13 @@ class PromptService {
           
           // Replace template variables including nested properties and expressions
           result = result.replace(/\$\{([^}]+)\}/g, (match, expression) => {
+            // Special handling for ISA core instructions
+            if (expression === 'ISA_CORE_INSTRUCTIONS') {
+              substitutionCount++;
+              console.log(`✅ Substituting ${match} with ISA core instructions (${this.isaCoreInstructions.length} chars)`);
+              return this.isaCoreInstructions;
+            }
+            
             // Handle expressions with || for fallback values
             const parts = expression.split('||').map(part => part.trim());
             

@@ -10,28 +10,43 @@ const Sentry = require('@sentry/node');
 const express = require('express');
 const cors = require('cors');
 const GeminiService = require('./services/geminiService');
+const ClaudeService = require('./services/claudeService');
 const TwilioService = require('./services/twilioService');
 const FUBService = require('./services/fubService');
 const AuthService = require('./services/authService');
 const ConversationService = require('./services/conversationService');
+const MessageRecoveryService = require('./services/messageRecoveryService');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
 
-// Initialize services
-let geminiService;
-if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_chosen_gemini_api_key_here') {
+// Initialize AI service (Claude or Gemini)
+let aiService;
+const useClaude = process.env.USE_CLAUDE === 'true';
+
+if (useClaude && process.env.CLAUDE_API_KEY && process.env.CLAUDE_API_KEY !== 'your_claude_api_key_here') {
   try {
-    geminiService = new GeminiService(process.env.GEMINI_API_KEY);
+    aiService = new ClaudeService(process.env.CLAUDE_API_KEY);
+    console.log('🤖 Claude 3.5 Sonnet service initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize Claude service:', error.message);
+  }
+} else if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_chosen_gemini_api_key_here') {
+  try {
+    aiService = new GeminiService(process.env.GEMINI_API_KEY);
     console.log('Gemini service initialized successfully');
   } catch (error) {
     console.error('Failed to initialize Gemini service:', error.message);
   }
 } else {
-  console.warn('Gemini API key not configured - AI features will not work');
+  console.warn('No AI service configured - AI features will not work');
+  console.warn('Set either CLAUDE_API_KEY with USE_CLAUDE=true or GEMINI_API_KEY in .env');
 }
+
+// Keep geminiService reference for backward compatibility
+const geminiService = aiService;
 
 let twilioService;
 if (process.env.TWILIO_ACCOUNT_SID && 
@@ -45,6 +60,7 @@ if (process.env.TWILIO_ACCOUNT_SID &&
       process.env.TWILIO_FROM_NUMBER
     );
     console.log('Twilio service initialized successfully');
+    console.log('📱 Twilio FROM number configured as:', process.env.TWILIO_FROM_NUMBER);
   } catch (error) {
     console.error('Failed to initialize Twilio service:', error.message);
   }
@@ -163,6 +179,43 @@ app.get('/api/queues/stats', async (req, res) => {
 
 // Sentry error handler must be registered before any other error middleware and after all controllers
 Sentry.setupExpressErrorHandler(app);
+
+// Initialize DEV mode for test lead
+const devModeService = require('./services/devModeService');
+// Dev mode is auto-enabled for lead 470 in the service constructor
+
+// Initialize message recovery service
+let messageRecoveryService;
+if (twilioService && fubService && geminiService && conversationService) {
+  messageRecoveryService = new MessageRecoveryService(
+    twilioService,
+    fubService,
+    geminiService,
+    conversationService
+  );
+  
+  // Start periodic recovery (check every 5 minutes)
+  messageRecoveryService.startPeriodicRecovery(5);
+  console.log('📨 Message recovery service initialized');
+} else {
+  console.warn('⚠️  Message recovery service not started - missing required services');
+}
+
+// Manual recovery endpoint for testing
+app.post('/api/recover-messages', async (req, res) => {
+  if (!messageRecoveryService) {
+    return res.status(503).json({ error: 'Message recovery service not available' });
+  }
+  
+  try {
+    const { lookbackMinutes = 60 } = req.body;
+    const results = await messageRecoveryService.recoverMissedMessages(lookbackMinutes);
+    res.json({ success: true, results });
+  } catch (error) {
+    console.error('Manual recovery failed:', error);
+    res.status(500).json({ error: 'Recovery failed', message: error.message });
+  }
+});
 
 // Custom error handler
 app.use((err, req, res, next) => {

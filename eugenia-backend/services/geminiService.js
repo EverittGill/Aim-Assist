@@ -210,8 +210,9 @@ class GeminiService {
     
     console.log(`🔍 formatConversationHistory: Processing ${messages.length} messages for ${leadName}`);
     
-    // Send ALL messages for complete context (this is our advantage over Raiya Text!)
-    const recentMessages = messages;
+    // Limit to last 20 messages to avoid token limits while maintaining context
+    // We'll improve this with Claude which has a 200k token context window
+    const recentMessages = messages.slice(-20);
     
     const formatted = recentMessages.map(msg => {
       // Handle different field names from different sources

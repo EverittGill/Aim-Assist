@@ -97,8 +97,8 @@ GEMINI_TOP_P=0.9                # Cumulative probability threshold (default: 0.9
 GEMINI_MAX_TOKENS=256           # Max response length in tokens (default: 256)
 
 # SMS Integration (Twilio)
-TWILIO_ACCOUNT_SID=ACd3662d43b55d8fc8014b95529df92c77
-TWILIO_AUTH_TOKEN=cc0a304d764c9a17e73a10c83cd41ef9
+TWILIO_ACCOUNT_SID=your_twilio_account_sid_here
+TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
 TWILIO_FROM_NUMBER=+18662981158  # Eugenia's toll-free verified number
 USER_NOTIFICATION_PHONE=+19047805602  # Your phone for qualified lead alerts
 ALLOW_DEV_SMS=true  # Set to true to actually send SMS in development mode
@@ -481,12 +481,20 @@ npm run reset:status     # Reset status fields
 - **Custom Prompts**: Editable prompts in `customPrompts.json` ✅
 - **SMS Length**: Responses stay under 160 characters ✅
 - **Lead Qualification**: Tracks timeline, agent status, and financing ✅
+- **Twilio Webhook**: Configured via Messaging Service ✅
 
-#### Known Issues
-- **Response Style**: Eugenia's responses are somewhat robotic and repetitive
-  - Starts every message with "Hi [name], Eugenia here!"
-  - Asks too many questions at once
-  - Needs prompt refinement for more natural conversation
+#### Active Issues (As of 11:45 AM EST)
+1. **Wrong Phone Number**: SMS sending from +19044416896 instead of +18662981158
+   - Cause: Webhook using `incomingMessage.to` instead of `TWILIO_FROM_NUMBER`
+   - Fix: Update webhooks.js line 167 and smsProcessor.js line 39
+
+2. **Empty AI Responses**: Gemini returning empty with `finishReason: MAX_TOKENS`
+   - Cause: Prompt too long (1,617 chars for just 9 messages)
+   - Fix: Implement smart context window or increase token limit
+
+3. **Scaling Issue**: Including ALL conversation history will hit token limits
+   - Cause: `const recentMessages = messages;` includes everything
+   - Fix: Limit to last 20 messages + summary
 
 #### Gemini Configuration (RESOLVED)
 **Issue**: Empty responses with `finishReason: MAX_TOKENS`
@@ -506,6 +514,61 @@ npm run reset:status     # Reset status fields
 - Max Output Tokens: 1000
 - Temperature: 0.7
 - Custom prompt: ~420 characters
+
+### Twilio Integration Plan (2025-01-20)
+
+#### Phase 1: Quick Fixes (30 minutes)
+1. **Fix Wrong Phone Number**:
+   - Change `routes/webhooks.js` line 167: Use `process.env.TWILIO_FROM_NUMBER` instead of `incomingMessage.to`
+   - Update `workers/smsProcessor.js` line 39: Ensure using correct from number
+   - This ensures all SMS send from +18662981158
+
+2. **Fix Empty AI Responses**:
+   - Increase `GEMINI_MAX_TOKENS` in .env to 2000
+   - Or switch to model with larger context window
+
+#### Phase 2: Smart Context Window (1 hour)
+1. **Limit Conversation History**:
+   ```javascript
+   // In geminiService.js formatConversationHistory():
+   const recentMessages = messages.slice(-20); // Last 20 messages
+   ```
+
+2. **Extract Key Facts**:
+   - Track timeline, budget, location, financing separately
+   - Include summary of older conversations
+   - Maintain full history for qualification tracking only
+
+3. **Optimize Prompts**:
+   - Remove emoji headers (🎯, 📋, etc.)
+   - Eliminate redundant instructions
+   - Use concise format like customPrompts.json
+
+#### Phase 3: Claude 3.5 Sonnet Migration (2-3 hours)
+1. **Advantages**:
+   - 200k token context window (vs 32k Gemini)
+   - More natural conversation style
+   - Better instruction following
+   - ~40x more expensive but worth it for quality
+
+2. **Implementation**:
+   - Install `@anthropic-ai/sdk`
+   - Create `claudeService.js` with same interface
+   - Add feature flag for gradual migration
+   - Test with lead 470 first
+
+3. **Simplified Claude Prompt**:
+   ```
+   You are Eugenia, a friendly real estate assistant for ${agencyName}.
+   
+   Lead: ${leadName}
+   Recent conversation:
+   ${last20Messages}
+   
+   Their message: ${currentMessage}
+   
+   Respond naturally in under 160 chars. Focus on timeline, agent status, and financing.
+   ```
 
 ## How This Project Works
 

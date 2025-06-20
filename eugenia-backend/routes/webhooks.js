@@ -33,6 +33,13 @@ module.exports = (twilioService, fubService, geminiService, conversationService)
                   '\nFrom:', incomingMessage.from,
                   '\nTo:', incomingMessage.to,
                   '\nMessage:', incomingMessage.body);
+      console.log('📱 Expected Eugenia number:', process.env.TWILIO_FROM_NUMBER);
+      console.log('📱 Actual TO number received:', incomingMessage.to);
+      
+      // Check if SMS was sent to the wrong number
+      if (incomingMessage.to !== process.env.TWILIO_FROM_NUMBER) {
+        console.warn(`⚠️  WARNING: SMS sent to ${incomingMessage.to} instead of Eugenia's number ${process.env.TWILIO_FROM_NUMBER}`);
+      }
       
       // 1. Look up lead by phone number
       const lead = await fubService.findLeadByPhone(incomingMessage.from);
@@ -164,7 +171,7 @@ module.exports = (twilioService, fubService, geminiService, conversationService)
           {
             leadId: lead.id,
             direction: 'outbound',
-            fromNumber: incomingMessage.to,  // Eugenia's number
+            fromNumber: process.env.TWILIO_FROM_NUMBER,  // Always use Eugenia's verified number
             delay: 45000, // 45-second delay for natural timing
             priority: 1   // Higher priority for responses
           }
