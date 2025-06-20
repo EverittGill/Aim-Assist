@@ -88,7 +88,11 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
         });
       }
       
-      const smsResult = await twilioService.sendSMS(leadPhoneNumber, message);
+      const queueResult = await twilioService.queueSMS(leadPhoneNumber, message, {
+        leadId: leadId,
+        direction: 'outbound',
+        priority: 1
+      });
       
       if (fubService) {
         try {
@@ -120,8 +124,8 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
       
       res.json({ 
         success: true,
-        message: 'SMS sent successfully',
-        twilioSid: smsResult.messageSid 
+        message: 'SMS queued successfully',
+        jobId: queueResult.jobId 
       });
     } catch (error) {
       console.error('Error sending SMS:', error);
@@ -138,6 +142,21 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
 
     try {
       if (fubService) {
+        // Store in FUB notes
+        try {
+          console.log(`📝 Storing incoming message in FUB notes for lead ${leadId}...`);
+          await fubService.addMessageToLeadStorage(leadId, {
+            direction: 'inbound',
+            type: 'sms',
+            content: message,
+            timestamp: new Date().toISOString()
+          });
+          console.log(`✅ Incoming message stored in FUB notes`);
+        } catch (storageError) {
+          console.error('Failed to store message in FUB notes:', storageError.message);
+        }
+        
+        // Also try to log to FUB text messages (if they give access)
         try {
           const logResult = await fubService.logTextMessage(
             leadId, 
@@ -154,6 +173,7 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
           }
         } catch (fubError) {
           console.error('Failed to log incoming SMS to FUB:', fubError.message);
+          // This is expected if FUB doesn't give text message access
         }
       }
       
@@ -210,8 +230,23 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
           console.log(`🤖 Generated AI response: "${aiMessage.substring(0, 50)}..."`);
           
           if (aiMessage && fubService) {
+            // Store in FUB notes
             try {
-              console.log(`📤 Auto-logging AI response to FUB for lead ${leadId}...`);
+              console.log(`📤 Storing AI response in FUB notes for lead ${leadId}...`);
+              await fubService.addMessageToLeadStorage(leadId, {
+                direction: 'outbound',
+                type: 'ai',
+                content: aiMessage,
+                timestamp: new Date().toISOString()
+              });
+              console.log(`✅ AI response stored in FUB notes`);
+            } catch (storageError) {
+              console.error('❌ Failed to store AI response in FUB notes:', storageError.message);
+            }
+            
+            // Also try to log to FUB text messages (if they give access)
+            try {
+              console.log(`📤 Auto-logging AI response to FUB text messages for lead ${leadId}...`);
               const logResult = await fubService.logTextMessage(
                 leadId,
                 aiMessage,
@@ -221,12 +256,13 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
               );
               
               if (logResult.id === 'skipped') {
-                console.log(`⚠️ Skipped auto-logging AI response: ${logResult.reason}`);
+                console.log(`⚠️ Skipped auto-logging: ${logResult.reason}`);
               } else {
-                console.log(`✅ Successfully auto-logged AI response to FUB (Message ID: ${logResult.id})`);
+                console.log(`✅ Successfully auto-logged to FUB text messages (Message ID: ${logResult.id})`);
               }
             } catch (fubError) {
-              console.error('❌ Failed to auto-log AI response to FUB:', fubError.message);
+              console.error('❌ Failed to auto-log to FUB text messages:', fubError.message);
+              // This is expected if FUB doesn't give text message access
             }
           }
           
@@ -323,10 +359,14 @@ module.exports = (geminiService, twilioService, fubService, conversationService,
           const aiMessage = await geminiService.generateInitialOutreach(lead, agencyName);
           console.log(`Generated message: "${aiMessage}"`);
           
-          // Send SMS
-          console.log(`📱 Sending SMS to ${lead.phone}...`);
-          const smsResult = await twilioService.sendSMS(lead.phone, aiMessage);
-          console.log(`SMS sent successfully: ${smsResult.messageSid}`);
+          // Queue SMS
+          console.log(`📱 Queueing SMS to ${lead.phone}...`);
+          const queueResult = await twilioService.queueSMS(lead.phone, aiMessage, {
+            leadId: lead.id,
+            direction: 'outbound',
+            priority: 2
+          });
+          console.log(`SMS queued successfully: Job ${queueResult.jobId}`);
           
           // Log to FUB
           await fubService.logTextMessage(

@@ -1,5 +1,6 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { ISA_PROMPTS, ESCALATION_KEYWORDS, EXPERT_QUESTIONS } = require('../prompts/isaPrompts');
+const promptService = require('./promptService');
 
 class GeminiService {
   constructor(apiKey) {
@@ -7,11 +8,13 @@ class GeminiService {
       throw new Error('Gemini API key is required');
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    this.model = this.genAI.getGenerativeModel({ model: 'models/gemini-2.5-flash' });
   }
 
   async generateInitialOutreach(leadDetails, agencyName) {
-    const prompt = ISA_PROMPTS.initialOutreach({ agencyName, leadDetails });
+    // Get the prompt function (custom or default)
+    const promptFunc = promptService.getExecutablePrompt('initialOutreach');
+    const prompt = promptFunc({ agencyName, leadDetails });
 
     try {
       const result = await this.model.generateContent(prompt);
@@ -78,7 +81,9 @@ class GeminiService {
   }
   
   buildISAPrompt({ agencyName, leadDetails, conversationHistory, currentMessage, messageCount, totalMessages }) {
-    return ISA_PROMPTS.conversationReply({ 
+    // Get the prompt function (custom or default)
+    const promptFunc = promptService.getExecutablePrompt('conversationReply');
+    return promptFunc({ 
       agencyName, 
       leadDetails, 
       conversationHistory, 
@@ -91,12 +96,16 @@ class GeminiService {
   checkEscalationTriggers(aiResponse, leadMessage, messageCount) {
     const message = (aiResponse + ' ' + leadMessage).toLowerCase();
     
+    // Get escalation keywords (custom or default)
+    const escalationKeywords = promptService.getEscalationKeywords();
+    const expertQuestions = promptService.getExpertQuestions();
+    
     // Check for keyword matches
-    const hasEscalationKeyword = ESCALATION_KEYWORDS.some(keyword => message.includes(keyword));
+    const hasEscalationKeyword = escalationKeywords.some(keyword => message.includes(keyword));
     
     // Check for specific questions that need human response
     const needsHumanExpertise = message.includes('?') && 
-      EXPERT_QUESTIONS.some(topic => message.includes(topic));
+      expertQuestions.some(topic => message.includes(topic));
     
     // 3-message rule
     const exceededMessageLimit = messageCount >= 3;

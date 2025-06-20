@@ -6,90 +6,37 @@ class ConversationService {
     this.fubService = fubService;
   }
 
-  // Fetch ALL historical messages for a lead from FUB with pagination
+  // Fetch ALL historical messages for a lead from notes storage
   async fetchFullConversationHistory(leadId, leadName = null) {
     try {
-      const allMessages = [];
-      let offset = 0;
-      const limit = 100; // FUB's max per page
-      let hasMore = true;
+      const messageStorageService = require('./messageStorageService');
       
-      console.log(`📥 Fetching FUB messages for lead ${leadId}...`);
+      console.log(`📥 Fetching messages from notes storage for lead ${leadId}...`);
       
-      // Keep fetching until we have all messages
-      while (hasMore) {
-        const url = `https://api.followupboss.com/v1/textMessages?personId=${leadId}&limit=${limit}&offset=${offset}&sort=-created`;
-        
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: this.fubService.getHeaders()
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Failed to fetch conversation history (${response.status}):`, errorText);
-          break;
-        }
-
-        const data = await response.json();
-        const messages = data.textmessages || [];
-        
-        allMessages.push(...messages);
-        
-        // Check if there are more messages
-        hasMore = messages.length === limit;
-        offset += limit;
-        
-        console.log(`   Fetched batch: ${messages.length} messages (total so far: ${allMessages.length})`);
-      }
+      // Get messages from FUB notes field
+      const storage = await this.fubService.getLeadMessageStorage(leadId);
+      const messages = storage.conversations || [];
       
-      console.log(`   Total messages fetched: ${allMessages.length}`);
+      console.log(`   Total messages in storage: ${messages.length}`);
       
-      // Transform FUB messages to our format
-      // Determine sender based on phone numbers
-      const eugeniaPhoneNumber = process.env.TWILIO_FROM_NUMBER;
+      // Transform stored messages to match expected format
+      const transformedMessages = messages.map(msg => ({
+        id: msg.id,
+        created: msg.timestamp,
+        body: msg.content,
+        direction: msg.direction,
+        type: msg.type,
+        // Include sender info based on direction
+        sender: msg.direction === 'inbound' ? leadName || 'Lead' : 'Eugenia'
+      }));
       
-      // Helper function to normalize phone numbers for comparison
-      const normalizePhone = (phone) => {
-        if (!phone) return '';
-        // Remove all non-digits
-        const digits = phone.replace(/\D/g, '');
-        // If it's 11 digits starting with 1, remove the 1
-        if (digits.length === 11 && digits.startsWith('1')) {
-          return digits.substring(1);
-        }
-        return digits;
-      };
+      // Sort by timestamp (oldest first for chronological chat display)
+      transformedMessages.sort((a, b) => new Date(a.created) - new Date(b.created));
       
-      const normalizedEugeniaPhone = normalizePhone(eugeniaPhoneNumber);
-      console.log(`   Normalized Eugenia phone for comparison: ${normalizedEugeniaPhone}`);
-      
-      const messages = allMessages.map(msg => {
-        // Normalize the fromNumber for comparison
-        const normalizedFromNumber = normalizePhone(msg.fromNumber);
-        
-        // Message is from lead if fromNumber is NOT Eugenia's number
-        const isFromLead = normalizedFromNumber !== normalizedEugeniaPhone;
-        
-        return {
-          sender: isFromLead ? (leadName || msg.firstName || 'Lead') : 'Eugenia',
-          text: msg.message || msg.body || '',
-          timestamp: msg.created || msg.createdDate || msg.sentDate,
-          fubMessageId: msg.id,
-          direction: isFromLead ? 'inbound' : 'outbound',
-          fromNumber: msg.fromNumber,
-          toNumber: msg.toNumber,
-          userId: msg.userId
-        };
-      });
-
-      // Sort by timestamp (oldest first)
-      messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-      
-      console.log(`Fetched ${messages.length} historical messages for lead ${leadId}`);
-      return messages;
+      return transformedMessages;
     } catch (error) {
       console.error('Error fetching conversation history:', error);
+      // Return empty array as fallback
       return [];
     }
   }
@@ -123,7 +70,8 @@ class ConversationService {
         source: leadData.source,
         stage: leadData.stage,
         tags: leadData.tags,
-        notes: leadData.background,
+        // Extract notes but remove our message storage
+        notes: this.extractCleanNotes(leadData.background),
         customFields: leadData.customFields,
         created: leadData.created,
         lastContacted: leadData.lastCommunication?.createdDate,
@@ -154,6 +102,16 @@ class ConversationService {
     };
   }
   
+  // Extract clean notes without our message storage JSON
+  extractCleanNotes(notesField) {
+    if (!notesField) return '';
+    
+    // Remove our message storage markers and content
+    return notesField
+      .replace(/\[EUGENIA_MESSAGES_START\].*?\[EUGENIA_MESSAGES_END\]/s, '')
+      .trim();
+  }
+
   // Alias method for webhook compatibility
   async getConversationHistory(leadId, leadName = null) {
     return this.fetchFullConversationHistory(leadId, leadName);

@@ -1,9 +1,9 @@
 // src/components/NavBar.js
 import React from 'react';
-import { Search, Settings as SettingsIcon, LogOut, User, Sun, Moon, Waves } from 'lucide-react';
+import { Search, Settings as SettingsIcon, LogOut, User, Sun, Moon, Waves, FileText } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
-const NavBar = ({ onToggleSettings, onToggleLeadsPanel, user, onLogout, searchQuery, onSearchChange }) => {
+const NavBar = ({ onToggleSettings, onToggleLeadsPanel, user, onLogout, searchQuery, onSearchChange, onTogglePromptEditor }) => {
   const { toggleTheme, isDark, isBeach } = useTheme();
   
   const getThemeIcon = () => {
@@ -59,6 +59,16 @@ const NavBar = ({ onToggleSettings, onToggleLeadsPanel, user, onLogout, searchQu
               </button>
             </>
           )}
+          
+          {/* Prompt Editor button */}
+          <button 
+            onClick={onTogglePromptEditor}
+            className="btn btn-ghost btn-circle btn-sm w-9 h-9 text-base-content hover:text-primary hover:bg-primary/20 transition-colors duration-warm"
+            aria-label="Edit Prompts"
+            title="Edit AI Prompts"
+          >
+            <FileText size={20} />
+          </button>
           
           {/* Theme toggle */}
           <button 

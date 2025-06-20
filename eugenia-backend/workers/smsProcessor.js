@@ -13,6 +13,24 @@ function createSmsProcessor(twilioService, fubService) {
       
       // Log to FUB if lead ID provided
       if (leadId && fubService) {
+        // Store in FUB notes
+        try {
+          await fubService.addMessageToLeadStorage(leadId, {
+            direction: direction,
+            type: 'ai',
+            content: message,
+            twilioSid: result.sid,
+            timestamp: new Date().toISOString()
+          });
+          console.log(`SMS stored in FUB notes for lead ${leadId}`);
+        } catch (storageError) {
+          console.error('Failed to store in FUB notes:', storageError.message);
+          Sentry.captureException(storageError, {
+            extra: { leadId, jobId: job.id }
+          });
+        }
+        
+        // Also try to log to FUB text messages (if they give access)
         try {
           await fubService.logTextMessage(
             leadId,
@@ -21,13 +39,11 @@ function createSmsProcessor(twilioService, fubService) {
             fromNumber || process.env.TWILIO_FROM_NUMBER,
             to
           );
-          console.log(`SMS logged to FUB for lead ${leadId}`);
+          console.log(`SMS logged to FUB text messages for lead ${leadId}`);
         } catch (fubError) {
           // Don't fail the job if FUB logging fails
-          console.error('Failed to log to FUB:', fubError.message);
-          Sentry.captureException(fubError, {
-            extra: { leadId, jobId: job.id }
-          });
+          console.error('Failed to log to FUB text messages:', fubError.message);
+          // This is expected if FUB doesn't give text message access
         }
       }
       

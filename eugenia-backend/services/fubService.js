@@ -197,7 +197,8 @@ class FUBService {
   }
 
   async getLeadById(leadId) {
-    const url = `${this.baseUrl}/people/${leadId}`;
+    // Add fields=allFields to ensure we get all fields including background
+    const url = `${this.baseUrl}/people/${leadId}?fields=allFields`;
     
     try {
       const response = await fetch(url, {
@@ -341,6 +342,89 @@ class FUBService {
       return await this.updateLead(leadId, updates);
     } catch (error) {
       console.error('Error updating custom field in FUB:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update lead notes field with message storage
+   * @param {string} leadId - FUB lead ID
+   * @param {Object} messageStorage - Message storage object
+   * @param {string} existingNotes - Existing notes to preserve
+   * @returns {Object} Updated lead data
+   */
+  async updateLeadNotes(leadId, messageStorage, existingNotes = '') {
+    try {
+      const messageStorageService = require('./messageStorageService');
+      const formattedNotes = messageStorageService.formatForNotes(messageStorage, existingNotes);
+      
+      // Update the background field which is FUB's notes field
+      const updates = {
+        background: formattedNotes
+      };
+      
+      console.log(`Updating notes for lead ${leadId}, size: ${formattedNotes.length} chars`);
+      console.log(`First 200 chars of notes: ${formattedNotes.substring(0, 200)}`);
+      const result = await this.updateLead(leadId, updates);
+      console.log(`Update response:`, result ? 'Success' : 'Failed');
+      return result;
+    } catch (error) {
+      console.error('Error updating lead notes in FUB:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get lead notes containing message storage
+   * @param {string} leadId - FUB lead ID
+   * @returns {Object} Parsed message storage
+   */
+  async getLeadMessageStorage(leadId) {
+    try {
+      const lead = await this.getLeadById(leadId);
+      const messageStorageService = require('./messageStorageService');
+      
+      // FUB stores notes in the 'background' field
+      const notes = lead.background || '';
+      console.log(`Raw notes from FUB (first 200 chars): ${notes.substring(0, 200)}`);
+      const parsed = messageStorageService.parseMessagesFromNotes(notes);
+      console.log(`Parsed ${parsed.conversations?.length || 0} messages from notes`);
+      return parsed;
+    } catch (error) {
+      console.error('Error getting lead message storage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add a message to lead's stored conversations
+   * @param {string} leadId - FUB lead ID
+   * @param {Object} message - Message to add
+   * @returns {Object} Updated lead data
+   */
+  async addMessageToLeadStorage(leadId, message) {
+    try {
+      const messageStorageService = require('./messageStorageService');
+      
+      // Get current lead data
+      const lead = await this.getLeadById(leadId);
+      const existingNotes = lead.background || '';
+      
+      // Parse existing messages
+      let storage = messageStorageService.parseMessagesFromNotes(existingNotes);
+      
+      // Add new message
+      storage = messageStorageService.addMessage(storage, message);
+      
+      // Check if approaching storage limit
+      if (messageStorageService.isApproachingLimit(storage)) {
+        console.warn(`Lead ${leadId} approaching message storage limit`);
+      }
+      
+      // Update lead notes
+      return await this.updateLeadNotes(leadId, storage, existingNotes);
+    } catch (error) {
+      console.error('Error adding message to lead storage:', error);
       throw error;
     }
   }

@@ -23,6 +23,7 @@ import SettingsPanel from './components/SettingsPanel';
 import AddLeadModal from './components/AddLeadModal';
 import LeadManagementView from './components/LeadManagementView';
 import AuthWrapper from './components/AuthWrapper';
+import PromptEditor from './components/PromptEditor';
 
 // Constants
 import { AI_SENDER_NAME, MOCK_LEADS_INITIAL } from './components/constants';
@@ -46,6 +47,7 @@ const App = ({ user, onLogout }) => {
   const [userAgencyName, setUserAgencyName] = useState(() => getFromLocalStorage('userAgencyName_isa', 'Your Awesome Realty'));
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPromptEditorOpen, setIsPromptEditorOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
   const [newLeadData, setNewLeadData] = useState({ name: '', email: '', phone: '', notes: '' });
@@ -335,6 +337,7 @@ const App = ({ user, onLogout }) => {
     <div className="min-h-screen bg-gradient-to-br from-base-100 to-base-200 text-base-content font-sans flex flex-col">
       <NavBar 
         onToggleSettings={() => setIsSettingsOpen(prev => !prev)} 
+        onTogglePromptEditor={() => setIsPromptEditorOpen(prev => !prev)}
         user={user}
         onLogout={onLogout}
         searchQuery={searchQuery}
@@ -374,6 +377,11 @@ const App = ({ user, onLogout }) => {
           userAgencyName={userAgencyName} setUserAgencyName={setUserAgencyName}
         />
       )}
+
+      <PromptEditor 
+        isOpen={isPromptEditorOpen}
+        onClose={() => setIsPromptEditorOpen(false)}
+      />
       
       <AddLeadModal 
         showModal={showAddLeadModal}

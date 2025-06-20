@@ -119,3 +119,60 @@ export const updateLeadStatus = async (leadId, status) => {
 export const fetchLeadConversation = async (leadId) => {
   return callBackendAPI(`/leads/${leadId}/conversation`, 'GET', null, "Fetch Lead Conversation");
 };
+
+// Auth functions
+export const login = async (email, password) => {
+  return callBackendAPI('/auth/login', 'POST', { email, password }, "Login");
+};
+
+export const verify = async () => {
+  return callBackendAPI('/auth/verify', 'GET', null, "Verify Auth");
+};
+
+export const refreshAuth = async () => {
+  return callBackendAPI('/auth/refresh', 'POST', null, "Refresh Auth");
+};
+
+// Prompt management functions
+export const getPrompts = async () => {
+  return callBackendAPI('/prompts', 'GET', null, "Get Prompts");
+};
+
+export const getPrompt = async (promptName) => {
+  return callBackendAPI(`/prompts/${promptName}`, 'GET', null, "Get Prompt");
+};
+
+export const updatePrompt = async (promptName, content) => {
+  return callBackendAPI(`/prompts/${promptName}`, 'PUT', { content }, "Update Prompt");
+};
+
+export const updateEscalationKeywords = async (keywords) => {
+  return callBackendAPI('/prompts/settings/escalation-keywords', 'PUT', { keywords }, "Update Escalation Keywords");
+};
+
+export const resetPrompts = async () => {
+  return callBackendAPI('/prompts/reset', 'POST', null, "Reset Prompts");
+};
+
+// Default export for convenience
+export default {
+  callBackendAPI,
+  fetchLeads,
+  deleteLead,
+  login,
+  verify,
+  refreshAuth,
+  createLead,
+  sendEugeniaMessage,
+  logIncomingLeadReplyAndGetNext,
+  initiateNewLeadProcessing,
+  generateInitialMessage,
+  generateAIReply,
+  updateLeadStatus,
+  fetchLeadConversation,
+  getPrompts,
+  getPrompt,
+  updatePrompt,
+  updateEscalationKeywords,
+  resetPrompts
+};

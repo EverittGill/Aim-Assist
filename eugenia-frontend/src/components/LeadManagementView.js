@@ -30,6 +30,7 @@ const LeadManagementView = ({
 }) => {
   const chatContainerRef = useRef(null);
   const [showMobileDetails, setShowMobileDetails] = useState(false);
+  const [simulateLeadReply, setSimulateLeadReply] = useState(false);
   
   // Auto-scroll to bottom when conversation history changes
   useEffect(() => {
@@ -156,7 +157,7 @@ const LeadManagementView = ({
                           <span>{msg.sender === AI_SENDER_NAME ? AI_SENDER_NAME : selectedLead.name}</span>
                           {/* Beach mode inline timestamp */}
                           <span className="beach-timestamp ml-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            {msg.timestamp ? new Date(msg.timestamp).toLocaleString([], { 
+                            {(msg.timestamp || msg.created) ? new Date(msg.timestamp || msg.created).toLocaleString([], { 
                               month: 'short', 
                               day: 'numeric', 
                               hour: 'numeric', 
@@ -164,11 +165,11 @@ const LeadManagementView = ({
                             }) : ''}
                           </span>
                         </div>
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.text || msg.body}</p>
                       </div>
                       {/* Timestamp on hover */}
                       <div className={`absolute ${msg.sender === AI_SENDER_NAME ? 'right-0' : 'left-0'} -bottom-5 text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap`}>
-                        {msg.timestamp ? new Date(msg.timestamp).toLocaleString([], { 
+                        {(msg.timestamp || msg.created) ? new Date(msg.timestamp || msg.created).toLocaleString([], { 
                           month: 'short', 
                           day: 'numeric', 
                           hour: 'numeric', 
@@ -197,29 +198,90 @@ const LeadManagementView = ({
                       </div>
                     </div>
                   ) : (
-                    <form onSubmit={(e) => {
-                      e.preventDefault();
-                      if (geminiMessage.trim() && !isAnyActionInProgress) {
-                        onSendEugeniaMessage(selectedLead, geminiMessage);
-                      }
-                    }} className="flex gap-2">
-                      <input
-                        type="text"
-                        value={geminiMessage}
-                        onChange={(e) => onGeminiMessageChange(e.target.value)}
-                        placeholder="Type a message as Eugenia..."
-                        className="input input-bordered flex-1 bg-white border-warm-300 focus:border-brand-500"
-                        disabled={isAnyActionInProgress}
-                      />
-                      <button
-                        type="submit"
-                        disabled={!geminiMessage.trim() || !selectedLead || isAnyActionInProgress}
-                        className="btn btn-primary"
-                        title="Send message"
-                      >
-                        {isSending ? <RefreshCw size={20} className="animate-spin"/> : <Send size={20} />}
-                      </button>
-                    </form>
+                    <>
+                      {/* Message Mode Toggle */}
+                      <div className="flex items-center justify-between mb-3 p-2 bg-gray-100 rounded-lg">
+                        <span className="text-sm font-medium text-gray-700">Message as:</span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setSimulateLeadReply(false)}
+                            className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                              !simulateLeadReply 
+                                ? 'bg-blue-500 text-white' 
+                                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                            }`}
+                          >
+                            <Bot size={14} className="inline mr-1" />
+                            Eugenia
+                          </button>
+                          <button
+                            onClick={() => setSimulateLeadReply(true)}
+                            className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                              simulateLeadReply 
+                                ? 'bg-green-500 text-white' 
+                                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                            }`}
+                          >
+                            <User size={14} className="inline mr-1" />
+                            Lead (Simulator)
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Message Input Form */}
+                      <form onSubmit={(e) => {
+                        e.preventDefault();
+                        if (simulateLeadReply) {
+                          if (leadReply.trim() && !isAnyActionInProgress) {
+                            onLeadReplySubmit();
+                          }
+                        } else {
+                          if (geminiMessage.trim() && !isAnyActionInProgress) {
+                            onSendEugeniaMessage(selectedLead, geminiMessage);
+                          }
+                        }
+                      }} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={simulateLeadReply ? leadReply : geminiMessage}
+                          onChange={(e) => simulateLeadReply ? onLeadReplyChange(e.target.value) : onGeminiMessageChange(e.target.value)}
+                          placeholder={simulateLeadReply ? `Type a message as ${selectedLead.name}...` : "Type a message as Eugenia..."}
+                          className={`input input-bordered flex-1 bg-white border-warm-300 focus:border-brand-500 ${
+                            simulateLeadReply ? 'border-green-300 focus:border-green-500' : ''
+                          }`}
+                          disabled={isAnyActionInProgress}
+                        />
+                        <button
+                          type="submit"
+                          disabled={simulateLeadReply ? (!leadReply.trim() || !selectedLead || isAnyActionInProgress) : (!geminiMessage.trim() || !selectedLead || isAnyActionInProgress)}
+                          className={`btn ${simulateLeadReply ? 'btn-success' : 'btn-primary'}`}
+                          title="Send message"
+                        >
+                          {isSending ? <RefreshCw size={20} className="animate-spin"/> : <Send size={20} />}
+                        </button>
+                      </form>
+                      
+                      {/* Generate AI Message Button - Only show when in lead simulator mode */}
+                      {simulateLeadReply && (
+                        <button
+                          onClick={() => onNurtureWithGemini(selectedLead, selectedLead.conversationHistory || [])}
+                          disabled={isLoadingGemini || isAnyActionInProgress}
+                          className="btn btn-sm btn-primary w-full mt-2"
+                        >
+                          {isLoadingGemini ? (
+                            <>
+                              <RefreshCw size={14} className="animate-spin mr-1" />
+                              Generating AI Response...
+                            </>
+                          ) : (
+                            <>
+                              <Bot size={14} className="mr-1" />
+                              Generate AI Response
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </>
                   )}
               </div>
               </div>

@@ -43,7 +43,22 @@ module.exports = (twilioService, fubService, geminiService, conversationService)
       
       console.log(`Lead found: ${lead.name} (ID: ${lead.id})`);
       
-      // 2. Log incoming message to FUB
+      // 2. Log incoming message to FUB notes storage
+      try {
+        await fubService.addMessageToLeadStorage(lead.id, {
+          direction: 'inbound',
+          type: 'sms',
+          content: incomingMessage.body,
+          twilioSid: incomingMessage.sid,
+          timestamp: new Date().toISOString()
+        });
+        console.log('Incoming message stored in FUB notes');
+      } catch (error) {
+        console.error('Failed to store message in FUB notes:', error);
+        // Continue processing even if storage fails
+      }
+      
+      // 2b. Also try to log to FUB text messages (if they give access)
       try {
         await fubService.logTextMessage(
           lead.id,
@@ -52,10 +67,10 @@ module.exports = (twilioService, fubService, geminiService, conversationService)
           incomingMessage.from,
           incomingMessage.to
         );
-        console.log('Incoming message logged to FUB');
+        console.log('Incoming message logged to FUB text messages');
       } catch (error) {
-        console.error('Failed to log incoming message to FUB:', error);
-        // Continue processing even if logging fails
+        console.error('Failed to log to FUB text messages:', error);
+        // This is expected if FUB doesn't give text message access
       }
       
       // 3. Check if AI is paused for this lead
