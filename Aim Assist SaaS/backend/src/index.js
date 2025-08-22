@@ -42,14 +42,24 @@ app.get('/', (req, res) => {
   });
 });
 
-// API Routes (to be implemented)
-app.use('/api/auth', require('./routes/auth'));
+// Initialize Auth Service
+const AuthService = require('./services/AuthService');
+const authService = new AuthService(process.env.JWT_SECRET);
+console.log('🔐 Auth service initialized');
+
+// API Routes with service injection
+app.use('/api/auth', require('./routes/auth')(authService));
 app.use('/api/tenants', require('./routes/tenants'));
-app.use('/api/leads', require('./routes/leads'));
-app.use('/api/conversations', require('./routes/conversations'));
+app.use('/api/leads', require('./routes/leads')(authService));
+app.use('/api/conversations', require('./routes/conversations')(authService));
+app.use('/api/messages', require('./routes/conversations')(authService)); // Alias for frontend compatibility
+app.use('/api/ai', require('./routes/conversations')(authService)); // AI endpoints are in conversations
 app.use('/api/crm', require('./routes/crm'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/billing', require('./routes/billing'));
+app.use('/api/sync', require('./routes/sync')); // CRM sync management
+app.use('/api/auto-text', require('./routes/auto-text')); // Auto-text rules management
+app.use('/api/prompts', require('./routes/prompts')); // AI prompt customization
 
 // Development helper endpoint
 app.use('/api/dev', require('./routes/frontend-status'));
@@ -61,6 +71,9 @@ app.use('/webhook/fub', require('./routes/webhooks/fub'));
 
 // Queue monitoring endpoint
 app.use('/api/queues', require('./routes/queues'));
+
+// Extraction monitoring dashboard
+app.use('/api/monitoring', require('./routes/monitoring'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -95,24 +108,43 @@ const server = app.listen(PORT, () => {
 
 // Initialize background services
 async function initializeServices() {
+  const services = [];
+  
   try {
     // Initialize Supabase connection
-    // const supabase = require('./config/supabase');
-    // console.log('✅ Supabase connected');
+    const { testConnection } = require('./config/supabase');
+    const supabaseConnected = await testConnection();
+    if (supabaseConnected) {
+      console.log('✅ Supabase connected');
+      services.push('supabase');
+    } else {
+      console.log('⚠️ Supabase not configured - using mock mode');
+    }
     
     // Initialize Redis and queues
-    // const QueueManager = require('./queues/QueueManager');
-    // await QueueManager.initialize();
-    // console.log('✅ Queue system initialized');
+    try {
+      const queueManager = require('./queues/QueueManager').default;
+      await queueManager.initialize();
+      console.log('✅ Queue system initialized');
+      services.push('queues');
+    } catch (queueError) {
+      console.warn('⚠️ Queue system not available:', queueError.message);
+      console.log('📝 Running without queue system - messages will process synchronously');
+    }
     
-    // Initialize CRM webhook listeners
-    // const WebhookManager = require('./services/WebhookManager');
-    // await WebhookManager.initialize();
-    // console.log('✅ Webhook listeners active');
+    // Initialize sync scheduler for all tenants
+    const SyncScheduler = require('./services/SyncScheduler');
+    await SyncScheduler.initializeAllTenants();
+    console.log('✅ Sync schedules initialized');
+    services.push('sync-scheduler');
     
-    console.log('🚀 All services initialized successfully');
+    if (services.length > 0) {
+      console.log(`🚀 Services initialized: ${services.join(', ')}`);
+    } else {
+      console.log('⚠️ Running in limited mode - no external services connected');
+    }
   } catch (error) {
-    console.error('❌ Service initialization failed:', error);
+    console.error('❌ Critical service initialization error:', error);
     // Don't exit - let health check show unhealthy state
   }
 }

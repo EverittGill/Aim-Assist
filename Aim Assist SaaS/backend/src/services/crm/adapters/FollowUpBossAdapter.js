@@ -21,6 +21,10 @@ class FollowUpBossAdapter extends CRMAdapter {
     this.baseUrl = 'https://api.followupboss.com/v1';
     this.basicAuth = Buffer.from(`${api_key}:`).toString('base64');
     
+    // Store user_id from settings or credentials
+    this.userId = config.settings?.user_id || this.credentials.user_id || null;
+    console.log('🔑 FUB Adapter initialized with userId:', this.userId);
+    
     // Override default field mappings for FUB
     this.fieldMappings = {
       first_name: 'firstName',
@@ -81,7 +85,9 @@ class FollowUpBossAdapter extends CRMAdapter {
       
       // Add search query if phone filter provided
       if (filters.phone) {
-        params.q = filters.phone;
+        // Clean phone number for search - remove country code and formatting
+        const cleanPhone = filters.phone.replace(/^\+?1/, '').replace(/\D/g, '');
+        params.q = cleanPhone;
       }
       
       const response = await axios.get(`${this.baseUrl}/people`, {
@@ -90,9 +96,15 @@ class FollowUpBossAdapter extends CRMAdapter {
       });
       
       const leads = response.data.people || [];
+      const metadata = response.data._metadata || {};
       
-      // Map to standard schema
-      return leads.map(lead => this.mapFUBToStandard(lead));
+      // Map to standard schema and include pagination info
+      return {
+        leads: leads.map(lead => this.mapFUBToStandard(lead)),
+        total: metadata.total || leads.length,
+        hasMore: metadata.next ? true : false,
+        nextOffset: offset + leads.length
+      };
     } catch (error) {
       console.error('Error fetching FUB leads:', error.message);
       throw error;
@@ -167,25 +179,88 @@ class FollowUpBossAdapter extends CRMAdapter {
   }
 
   /**
+   * Find lead by phone number
+   */
+  async findLeadByPhone(phoneNumber) {
+    try {
+      // Clean phone for search - FUB searches better with just digits
+      const cleanPhone = phoneNumber.replace(/^\+?1/, '').replace(/\D/g, '');
+      
+      console.log(`🔍 Searching for lead with phone: ${cleanPhone}`);
+      
+      const response = await axios.get(`${this.baseUrl}/people`, {
+        headers: this.getHeaders(),
+        params: {
+          q: cleanPhone,
+          limit: 10
+        }
+      });
+      
+      const leads = response.data.people || [];
+      
+      if (leads.length === 0) {
+        console.log('No leads found with that phone number');
+        return null;
+      }
+      
+      // Find best match - prefer exact phone match
+      const exactMatch = leads.find(lead => {
+        const phones = lead.phones || [];
+        return phones.some(p => {
+          const leadPhone = p.value.replace(/\D/g, '');
+          return leadPhone.includes(cleanPhone) || cleanPhone.includes(leadPhone);
+        });
+      });
+      
+      const match = exactMatch || leads[0];
+      console.log(`✅ Found lead: ${match.id} - ${match.name || 'No name'}`);
+      
+      return this.mapFUBToStandard(match);
+    } catch (error) {
+      console.error('Error finding lead by phone:', error.message);
+      return null;
+    }
+  }
+
+  /**
    * Log SMS message to FUB
    */
   async logMessage(leadId, message) {
     try {
+      // Build message data for FUB
+      // Note: FUB text message API has limited fields
       const messageData = {
-        personId: leadId,
-        message: message.content,
-        toNumber: message.direction === 'outbound' ? message.to : null,
-        fromNumber: message.direction === 'inbound' ? message.from : null,
-        createdUserId: this.credentials.user_id || null
+        personId: parseInt(leadId),
+        message: message.content
       };
+      
+      // Add phone numbers - REQUIRED fields
+      // For inbound: from=lead, to=our number
+      // For outbound: from=our number, to=lead
+      if (message.direction === 'inbound') {
+        messageData.fromNumber = message.from; // Lead's number
+        messageData.toNumber = message.to;     // Our number
+      } else {
+        messageData.fromNumber = message.from; // Our number
+        messageData.toNumber = message.to;     // Lead's number
+      }
+      
+      console.log('📤 Logging to FUB:', {
+        leadId,
+        direction: message.direction,
+        contentPreview: message.content.substring(0, 50),
+        from: messageData.fromNumber,
+        to: messageData.toNumber
+      });
       
       const response = await axios.post(`${this.baseUrl}/textMessages`, messageData, {
         headers: this.getHeaders()
       });
       
+      console.log('✅ FUB message logged successfully');
       return response.status === 200 || response.status === 201;
     } catch (error) {
-      console.error('Error logging message to FUB:', error.message);
+      console.error('❌ Error logging message to FUB:', error.response?.data || error.message);
       return false;
     }
   }

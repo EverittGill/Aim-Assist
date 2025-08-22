@@ -1,0 +1,16 @@
+{
+  "name": "eugenia-isa",
+  "version": "1.0.0",
+  "description": "Eugenia ISA - AI-powered real estate lead management system",
+  "scripts": {
+    "dev": "concurrently --kill-others \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd eugenia-backend && npm start",
+    "frontend": "cd eugenia-frontend && npm start",
+    "start": "npm run dev",
+    "install:all": "npm install && cd eugenia-backend && npm install && cd ../eugenia-frontend && npm install",
+    "cleanup:test": "cd eugenia-backend && npm run cleanup:test"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

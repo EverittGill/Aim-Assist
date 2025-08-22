@@ -243,11 +243,16 @@ class TenantService {
           metadata
         }]);
 
-      if (error) throw error;
+      if (error) {
+        console.warn('⚠️ Usage metrics table not available:', error.message);
+        // Don't throw - this is not critical
+        return { success: false, reason: 'table_missing' };
+      }
       return { success: true };
     } catch (error) {
-      console.error('Error recording usage:', error);
-      throw error;
+      console.warn('⚠️ Failed to record usage:', error.message);
+      // Don't throw - this is not critical for SMS delivery
+      return { success: false, error: error.message };
     }
   }
 

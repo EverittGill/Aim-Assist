@@ -1,214 +1,173 @@
-🔑 Gemini API key provided: AIzaSyB5Gx...
-🔧 Gemini Configuration: {
-  temperature: 0.7,
-  topK: 40,
-  topP: 0.9,
-  maxOutputTokens: 80,
-  envValue: '80'
-}
-Gemini configured with temperature: 0.7
-Gemini service initialized successfully
+🛠️ Dev mode auto-enabled for Test Lead 470
+🔑 Claude API key provided: sk-ant-api...
+Claude 3.5 Sonnet configured successfully
+🤖 Claude 3.5 Sonnet service initialized successfully
 Twilio service initialized successfully
+📱 Twilio FROM number configured as: +18662981158
 FUB service initialized successfully
 Conversation service initialized successfully
 Auth service initialized successfully
 Bull queues initialized successfully
 Queue processors initialized
-🛠️ Dev mode auto-enabled for Test Lead 470
 Eugenia Backend server is running on http://localhost:3001
 Queue monitoring available at http://localhost:3001/api/queues/stats
+✅ Custom prompts loaded: [ 'conversationReply', 'lastUpdated', 'escalationKeywords' ]
 Prompts loaded successfully
-GET /api/leads endpoint: Attempting to fetch real leads from FUB
-GET /api/leads endpoint: Attempting to fetch real leads from FUB
-Successfully fetched 100 leads from FUB.
-Successfully fetched 100 leads from FUB.
+⚠️  Webhook signature validation skipped (development mode)
 
-📱 FRONTEND REQUESTING CONVERSATION for lead 470...
-   Lead name: Test Everitt
+=== Incoming SMS Received ===
+From: +17068184445 
+To: +18662981158 
+Message: Hello, I need help selling my house
+📱 Expected Eugenia number: +18662981158
+📱 Actual TO number received: +18662981158
+Searching for lead with phone variants: [ '+17068184445', '7068184445', '17068184445', '+17068184445' ]
+Found lead match: Test Everitt (ID: 470)
+Lead found: Test Everitt (ID: 470)
 Message Storage initialized with limit: 200 messages
-📥 Fetching messages from notes storage for lead 470...
-Raw notes from FUB (first 200 chars): [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
-Parsed 6 messages from notes
-   Total messages in storage: 6
-   Returning 6 messages to frontend
-📝 Storing incoming message in FUB notes for lead 470...
-Updating notes for lead 470, size: 1223 chars
+Updating notes for lead 470, size: 8344 chars
 First 200 chars of notes: [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
 Update response: Success
-✅ Incoming message stored in FUB notes
-Logging inbound SMS to FUB for lead 470: hey
-Successfully logged SMS to FUB: 3293
-Successfully logged inbound SMS to FUB for lead 470
-Eugenia status for lead 470: active
-🧠 Building complete context for lead 470...
+Incoming message stored in FUB notes
+Logging inbound SMS to FUB for lead 470: Hello, I need help selling my house
+Successfully logged SMS to FUB: 3335
+Incoming message logged to FUB text messages
 📥 Fetching messages from notes storage for lead 470...
 Raw notes from FUB (first 200 chars): [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
-Parsed 7 messages from notes
-   Total messages in storage: 7
-📚 Using FUB history: 7 messages
-🎯 Final context: 7 messages for lead Test Everitt
-📊 Qualification Progress: 0/3 questions answered
-📊 Generating AI reply with context:
+Parsed 43 messages from notes
+   Total messages in storage: 43
+Fetched 43 messages from conversation history
+📊 Qualification Progress: 1/3 questions answered (timeline)
+🔍 formatConversationHistory: Processing 43 messages for Test Everitt
+🔍 formatConversationHistory: Formatted history length: 2670 chars
+📊 Generating Claude reply with context:
     - Lead: Test Everitt (ID: 470)
-    - First Name: Test
-    - Conversation Messages: 7
+    - First Name: undefined
+    - Conversation Messages: 43
     - Qualification Complete: false
-📝 Prompt built, length: 1572
-📝 First 500 chars of prompt: You are Eugenia, an expert Inside Sales Agent (ISA) for Your Awesome Realty, a real estate company. Your goal is to qualify leads and schedule appointments with agents.
+🔍 getExecutablePrompt called for: conversationReply
+🔍 Custom prompts available: conversationReply,lastUpdated,escalationKeywords
+✅ Using CUSTOM prompt for conversationReply
+📝 Using custom prompt template for conversationReply, length: 327 chars
+✅ Substituting ${conversationHistory} with value of length 2670
+✅ Substituting ${leadDetails.name} with value of length 12
+✅ Substituting ${currentMessage} with value of length 35
+✅ Custom prompt ready: 3 variables substituted, final length: 2986 chars
+📝 Prompt built, length: 2986
+🧠 Sending prompt to Claude...
+✅ Claude generated reply: "Hi there! I'm Eugenia, Everitt's assistant. When are you looking to sell? I can help connect you with our team to get the process started!"
+🛠️ Lead 470 is in DEV MODE - all limits disabled
+🛠️ DEV MODE: Skipping all escalation checks for lead 470
+AI Response: Hi there! I'm Eugenia, Everitt's assistant. When are you looking to sell? I can help connect you with our team to get the process started!
+Should Pause: false
+SMS queued successfully. Job ID: 9
+AI response queued successfully (Job ID: 9)
+Message will be sent in 45 seconds for natural timing
+Processing SMS job 9: { to: '+17068184445', leadId: '470', retryCount: 0 }
+📱 SENDING SMS ========================
+   To: +17068184445
+   From: +18662981158
+   Message: "Hi there! I'm Eugenia, Everitt's assistant. When a..."
+   Environment: development
+   ✅ Using configured FROM number: +18662981158
+✅ SMS sent successfully. SID: SM027b356317a4d992d5d650b5d4185f1c
+Updating notes for lead 470, size: 8624 chars
+First 200 chars of notes: [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
+Update response: Success
+SMS stored in FUB notes for lead 470
+Logging outbound SMS to FUB for lead 470: Hi there! I'm Eugenia, Everitt's assistant. When are you looking to sell? I can help connect you with our team to get the process started!
+Successfully logged SMS to FUB: 3336
+SMS logged to FUB text messages for lead 470
+SMS job 9 completed successfully
+⚠️  Webhook signature validation skipped (development mode)
 
-🎯 YOUR PRIMARY OBJECTIVES:
-1. Build rapport and trust quickly
-2. Identify their timeline and motivation
-3. Understand their property needs (location, price, type)
-4. Schedule a call or meeting with an agent
-5. Keep responses under 160 characters for SMS
-
-📋 LEAD INFORMATION:
-- Name: Test Everitt
-- Source: <unspecified>
-- Tags: 
-📝 Last 500 chars of prompt: ces, reference them
-5. Move the conversation forward toward scheduling
-6. No emojis in responses
-
-🚨 ESCALATION AWARENESS:
-- This is message #8 from the lead
-- After 3 messages, focus on scheduling a call
-- If they mention "call", "schedule", "agent", or show buying urgency, prioritize handoff
-
-📝 RESPONSE GUIDELINES:
-- Acknowledge their message first
-- Ask ONE qualifying question OR suggest next step
-- Keep it natural and conversational
-- Under 160 characters total
-
-Generate Eugenia's response:
-🧠 Sending prompt to Gemini...
-📊 Raw result object: { hasResponse: true, resultKeys: [ 'response' ] }
-📊 Response object: {
-  hasText: true,
-  responseKeys: [
-    'candidates',
-    'usageMetadata',
-    'modelVersion',
-    'responseId',
-    'text',
-    'functionCall',
-    'functionCalls'
-  ],
-  candidates: 1
-}
-🔍 Candidate details: {
-  finishReason: 'MAX_TOKENS',
-  hasSafetyRatings: false,
-  safetyRatings: undefined,
-  hasContent: true,
-  contentParts: 0
-}
-✅ Gemini response received: { responseLength: 0, firstChars: '' }
-🔍 AI Generation Result: {
-  hasResult: true,
-  hasMessage: false,
-  messageLength: 0,
-  shouldPause: false,
-  isQualificationComplete: false
-}
-⚠️ No AI message generated!
+=== Incoming SMS Received ===
+From: +17068184445 
+To: +18662981158 
+Message: Maybe in 3 months 
+📱 Expected Eugenia number: +18662981158
+📱 Actual TO number received: +18662981158
+Searching for lead with phone variants: [ '+17068184445', '7068184445', '17068184445', '+17068184445' ]
+Found lead match: Test Everitt (ID: 470)
+Lead found: Test Everitt (ID: 470)
+Updating notes for lead 470, size: 8784 chars
+First 200 chars of notes: [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
+Update response: Success
+Incoming message stored in FUB notes
+Logging inbound SMS to FUB for lead 470: Maybe in 3 months 
+Successfully logged SMS to FUB: 3337
+Incoming message logged to FUB text messages
+📥 Fetching messages from notes storage for lead 470...
+Raw notes from FUB (first 200 chars): [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
+Parsed 45 messages from notes
+   Total messages in storage: 45
+Fetched 45 messages from conversation history
+📊 Qualification Progress: 1/3 questions answered (timeline)
+🔍 formatConversationHistory: Processing 45 messages for Test Everitt
+🔍 formatConversationHistory: Formatted history length: 2851 chars
+📊 Generating Claude reply with context:
+    - Lead: Test Everitt (ID: 470)
+    - First Name: undefined
+    - Conversation Messages: 45
+    - Qualification Complete: false
+🔍 getExecutablePrompt called for: conversationReply
+🔍 Custom prompts available: conversationReply,lastUpdated,escalationKeywords
+✅ Using CUSTOM prompt for conversationReply
+📝 Using custom prompt template for conversationReply, length: 327 chars
+✅ Substituting ${conversationHistory} with value of length 2851
+✅ Substituting ${leadDetails.name} with value of length 12
+✅ Substituting ${currentMessage} with value of length 18
+✅ Custom prompt ready: 3 variables substituted, final length: 3150 chars
+📝 Prompt built, length: 3150
+🧠 Sending prompt to Claude...
+✅ Claude generated reply: "Hi! Perfect timing to start planning. Are you already working with a real estate agent? We'd love to help get your home ready for the spring market!"
+🛠️ Lead 470 is in DEV MODE - all limits disabled
+🛠️ DEV MODE: Skipping all escalation checks for lead 470
+AI Response: Hi! Perfect timing to start planning. Are you already working with a real estate agent? We'd love to help get your home ready for the spring market!
+Should Pause: false
+SMS queued successfully. Job ID: 10
+AI response queued successfully (Job ID: 10)
+Message will be sent in 45 seconds for natural timing
 GET /api/leads endpoint: Attempting to fetch real leads from FUB
 Successfully fetched 100 leads from FUB.
 GET /api/leads endpoint: Attempting to fetch real leads from FUB
 
 📱 FRONTEND REQUESTING CONVERSATION for lead 470...
+Successfully fetched 100 leads from FUB.
    Lead name: Test Everitt
 📥 Fetching messages from notes storage for lead 470...
-Successfully fetched 100 leads from FUB.
 Raw notes from FUB (first 200 chars): [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
-Parsed 7 messages from notes
-   Total messages in storage: 7
-   Returning 7 messages to frontend
-📝 Storing incoming message in FUB notes for lead 470...
-Updating notes for lead 470, size: 1374 chars
+Parsed 45 messages from notes
+   Total messages in storage: 45
+   Returning 45 messages to frontend
+Processing SMS job 10: { to: '+17068184445', leadId: '470', retryCount: 0 }
+📱 SENDING SMS ========================
+   To: +17068184445
+   From: +18662981158
+   Message: "Hi! Perfect timing to start planning. Are you alre..."
+   Environment: development
+   ✅ Using configured FROM number: +18662981158
+✅ SMS sent successfully. SID: SMc1652320755dd4286d2485fae37fecc5
+Updating notes for lead 470, size: 9074 chars
 First 200 chars of notes: [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
 Update response: Success
-✅ Incoming message stored in FUB notes
-Logging inbound SMS to FUB for lead 470: hey again
-Successfully logged SMS to FUB: 3294
-Successfully logged inbound SMS to FUB for lead 470
-Eugenia status for lead 470: active
-🧠 Building complete context for lead 470...
+SMS stored in FUB notes for lead 470
+Logging outbound SMS to FUB for lead 470: Hi! Perfect timing to start planning. Are you already working with a real estate agent? We'd love to help get your home ready for the spring market!
+Successfully logged SMS to FUB: 3338
+SMS logged to FUB text messages for lead 470
+SMS job 10 completed successfully
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+
+📱 FRONTEND REQUESTING CONVERSATION for lead 470...
+Successfully fetched 100 leads from FUB.
+   Lead name: Test Everitt
 📥 Fetching messages from notes storage for lead 470...
 Raw notes from FUB (first 200 chars): [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
-Parsed 8 messages from notes
-   Total messages in storage: 8
-📚 Using FUB history: 8 messages
-🎯 Final context: 8 messages for lead Test Everitt
-📊 Qualification Progress: 0/3 questions answered
-📊 Generating AI reply with context:
-    - Lead: Test Everitt (ID: 470)
-    - First Name: Test
-    - Conversation Messages: 8
-    - Qualification Complete: false
-📝 Prompt built, length: 1602
-📝 First 500 chars of prompt: You are Eugenia, an expert Inside Sales Agent (ISA) for Your Awesome Realty, a real estate company. Your goal is to qualify leads and schedule appointments with agents.
-
-🎯 YOUR PRIMARY OBJECTIVES:
-1. Build rapport and trust quickly
-2. Identify their timeline and motivation
-3. Understand their property needs (location, price, type)
-4. Schedule a call or meeting with an agent
-5. Keep responses under 160 characters for SMS
-
-📋 LEAD INFORMATION:
-- Name: Test Everitt
-- Source: <unspecified>
-- Tags: 
-📝 Last 500 chars of prompt: ces, reference them
-5. Move the conversation forward toward scheduling
-6. No emojis in responses
-
-🚨 ESCALATION AWARENESS:
-- This is message #9 from the lead
-- After 3 messages, focus on scheduling a call
-- If they mention "call", "schedule", "agent", or show buying urgency, prioritize handoff
-
-📝 RESPONSE GUIDELINES:
-- Acknowledge their message first
-- Ask ONE qualifying question OR suggest next step
-- Keep it natural and conversational
-- Under 160 characters total
-
-Generate Eugenia's response:
-🧠 Sending prompt to Gemini...
-📊 Raw result object: { hasResponse: true, resultKeys: [ 'response' ] }
-📊 Response object: {
-  hasText: true,
-  responseKeys: [
-    'candidates',
-    'usageMetadata',
-    'modelVersion',
-    'responseId',
-    'text',
-    'functionCall',
-    'functionCalls'
-  ],
-  candidates: 1
-}
-🔍 Candidate details: {
-  finishReason: 'MAX_TOKENS',
-  hasSafetyRatings: false,
-  safetyRatings: undefined,
-  hasContent: true,
-  contentParts: 0
-}
-✅ Gemini response received: { responseLength: 0, firstChars: '' }
-🔍 AI Generation Result: {
-  hasResult: true,
-  hasMessage: false,
-  messageLength: 0,
-  shouldPause: false,
-  isQualificationComplete: false
-}
-⚠️ No AI message generated!
+Parsed 46 messages from notes
+   Total messages in storage: 46
+   Returning 46 messages to frontend
 GET /api/leads endpoint: Attempting to fetch real leads from FUB
 GET /api/leads endpoint: Attempting to fetch real leads from FUB
 Successfully fetched 100 leads from FUB.
@@ -218,90 +177,148 @@ Successfully fetched 100 leads from FUB.
    Lead name: Test Everitt
 📥 Fetching messages from notes storage for lead 470...
 Raw notes from FUB (first 200 chars): [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
-Parsed 8 messages from notes
-   Total messages in storage: 8
-   Returning 8 messages to frontend
-📝 Storing incoming message in FUB notes for lead 470...
-Updating notes for lead 470, size: 1520 chars
+Parsed 46 messages from notes
+   Total messages in storage: 46
+   Returning 46 messages to frontend
+⚠️  Webhook signature validation skipped (development mode)
+
+=== Incoming SMS Received ===
+From: +17068184445 
+To: +18662981158 
+Message: Are you using Claude or Gemini?
+📱 Expected Eugenia number: +18662981158
+📱 Actual TO number received: +18662981158
+Searching for lead with phone variants: [ '+17068184445', '7068184445', '17068184445', '+17068184445' ]
+Found lead match: Test Everitt (ID: 470)
+Lead found: Test Everitt (ID: 470)
+Updating notes for lead 470, size: 9247 chars
 First 200 chars of notes: [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
 Update response: Success
-✅ Incoming message stored in FUB notes
-Logging inbound SMS to FUB for lead 470: test
-Successfully logged SMS to FUB: 3295
-Successfully logged inbound SMS to FUB for lead 470
-Eugenia status for lead 470: active
-🧠 Building complete context for lead 470...
+Incoming message stored in FUB notes
+Logging inbound SMS to FUB for lead 470: Are you using Claude or Gemini?
+Successfully logged SMS to FUB: 3339
+Incoming message logged to FUB text messages
 📥 Fetching messages from notes storage for lead 470...
 Raw notes from FUB (first 200 chars): [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
-Parsed 9 messages from notes
-   Total messages in storage: 9
-📚 Using FUB history: 9 messages
-🎯 Final context: 9 messages for lead Test Everitt
-📊 Qualification Progress: 0/3 questions answered
-📊 Generating AI reply with context:
+Parsed 47 messages from notes
+   Total messages in storage: 47
+Fetched 47 messages from conversation history
+📊 Qualification Progress: 1/3 questions answered (timeline)
+🔍 formatConversationHistory: Processing 47 messages for Test Everitt
+🔍 formatConversationHistory: Formatted history length: 3055 chars
+📊 Generating Claude reply with context:
     - Lead: Test Everitt (ID: 470)
-    - First Name: Test
-    - Conversation Messages: 9
+    - First Name: undefined
+    - Conversation Messages: 47
     - Qualification Complete: false
-📝 Prompt built, length: 1617
-📝 First 500 chars of prompt: You are Eugenia, an expert Inside Sales Agent (ISA) for Your Awesome Realty, a real estate company. Your goal is to qualify leads and schedule appointments with agents.
+🔍 getExecutablePrompt called for: conversationReply
+🔍 Custom prompts available: conversationReply,lastUpdated,escalationKeywords
+✅ Using CUSTOM prompt for conversationReply
+📝 Using custom prompt template for conversationReply, length: 327 chars
+✅ Substituting ${conversationHistory} with value of length 3055
+✅ Substituting ${leadDetails.name} with value of length 12
+✅ Substituting ${currentMessage} with value of length 31
+✅ Custom prompt ready: 3 variables substituted, final length: 3367 chars
+📝 Prompt built, length: 3367
+🧠 Sending prompt to Claude...
+✅ Claude generated reply: "Hi! I'm Eugenia, Everitt's real estate assistant. I'm here to help connect you with our team. What's your timeline for buying or selling?"
+🛠️ Lead 470 is in DEV MODE - all limits disabled
+🛠️ DEV MODE: Skipping all escalation checks for lead 470
+AI Response: Hi! I'm Eugenia, Everitt's real estate assistant. I'm here to help connect you with our team. What's your timeline for buying or selling?
+Should Pause: false
+SMS queued successfully. Job ID: 11
+AI response queued successfully (Job ID: 11)
+Message will be sent in 45 seconds for natural timing
+Processing SMS job 11: { to: '+17068184445', leadId: '470', retryCount: 0 }
+📱 SENDING SMS ========================
+   To: +17068184445
+   From: +18662981158
+   Message: "Hi! I'm Eugenia, Everitt's real estate assistant. ..."
+   Environment: development
+   ✅ Using configured FROM number: +18662981158
+✅ SMS sent successfully. SID: SMaf68246cbb3c0d790972567b66a56145
+Updating notes for lead 470, size: 9526 chars
+First 200 chars of notes: [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
+Update response: Success
+SMS stored in FUB notes for lead 470
+Logging outbound SMS to FUB for lead 470: Hi! I'm Eugenia, Everitt's real estate assistant. I'm here to help connect you with our team. What's your timeline for buying or selling?
+Successfully logged SMS to FUB: 3340
+SMS logged to FUB text messages for lead 470
+SMS job 11 completed successfully
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
+Successfully fetched 100 leads from FUB.
+GET /api/leads endpoint: Attempting to fetch real leads from FUB
 
-🎯 YOUR PRIMARY OBJECTIVES:
-1. Build rapport and trust quickly
-2. Identify their timeline and motivation
-3. Understand their property needs (location, price, type)
-4. Schedule a call or meeting with an agent
-5. Keep responses under 160 characters for SMS
+📱 FRONTEND REQUESTING CONVERSATION for lead 470...
+Successfully fetched 100 leads from FUB.
+   Lead name: Test Everitt
+📥 Fetching messages from notes storage for lead 470...
+Raw notes from FUB (first 200 chars): [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
+Parsed 48 messages from notes
+   Total messages in storage: 48
+   Returning 48 messages to frontend
+⚠️  Webhook signature validation skipped (development mode)
 
-📋 LEAD INFORMATION:
-- Name: Test Everitt
-- Source: <unspecified>
-- Tags: 
-📝 Last 500 chars of prompt: es, reference them
-5. Move the conversation forward toward scheduling
-6. No emojis in responses
-
-🚨 ESCALATION AWARENESS:
-- This is message #10 from the lead
-- After 3 messages, focus on scheduling a call
-- If they mention "call", "schedule", "agent", or show buying urgency, prioritize handoff
-
-📝 RESPONSE GUIDELINES:
-- Acknowledge their message first
-- Ask ONE qualifying question OR suggest next step
-- Keep it natural and conversational
-- Under 160 characters total
-
-Generate Eugenia's response:
-🧠 Sending prompt to Gemini...
-📊 Raw result object: { hasResponse: true, resultKeys: [ 'response' ] }
-📊 Response object: {
-  hasText: true,
-  responseKeys: [
-    'candidates',
-    'usageMetadata',
-    'modelVersion',
-    'responseId',
-    'text',
-    'functionCall',
-    'functionCalls'
-  ],
-  candidates: 1
-}
-🔍 Candidate details: {
-  finishReason: 'MAX_TOKENS',
-  hasSafetyRatings: false,
-  safetyRatings: undefined,
-  hasContent: true,
-  contentParts: 0
-}
-✅ Gemini response received: { responseLength: 0, firstChars: '' }
-🔍 AI Generation Result: {
-  hasResult: true,
-  hasMessage: false,
-  messageLength: 0,
-  shouldPause: false,
-  isQualificationComplete: false
-}
-⚠️ No AI message generated!
-TEST LOG ENTRY
+=== Incoming SMS Received ===
+From: +17068184445 
+To: +18662981158 
+Message: About 3 months Eugenia 
+📱 Expected Eugenia number: +18662981158
+📱 Actual TO number received: +18662981158
+Searching for lead with phone variants: [ '+17068184445', '7068184445', '17068184445', '+17068184445' ]
+Found lead match: Test Everitt (ID: 470)
+Lead found: Test Everitt (ID: 470)
+Updating notes for lead 470, size: 9691 chars
+First 200 chars of notes: [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
+Update response: Success
+Incoming message stored in FUB notes
+Logging inbound SMS to FUB for lead 470: About 3 months Eugenia 
+Successfully logged SMS to FUB: 3341
+Incoming message logged to FUB text messages
+📥 Fetching messages from notes storage for lead 470...
+Raw notes from FUB (first 200 chars): [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
+Parsed 49 messages from notes
+   Total messages in storage: 49
+Fetched 49 messages from conversation history
+📊 Qualification Progress: 1/3 questions answered (timeline)
+🔍 formatConversationHistory: Processing 49 messages for Test Everitt
+🔍 formatConversationHistory: Formatted history length: 3240 chars
+📊 Generating Claude reply with context:
+    - Lead: Test Everitt (ID: 470)
+    - First Name: undefined
+    - Conversation Messages: 49
+    - Qualification Complete: false
+🔍 getExecutablePrompt called for: conversationReply
+🔍 Custom prompts available: conversationReply,lastUpdated,escalationKeywords
+✅ Using CUSTOM prompt for conversationReply
+📝 Using custom prompt template for conversationReply, length: 327 chars
+✅ Substituting ${conversationHistory} with value of length 3240
+✅ Substituting ${leadDetails.name} with value of length 12
+✅ Substituting ${currentMessage} with value of length 23
+✅ Custom prompt ready: 3 variables substituted, final length: 3544 chars
+📝 Prompt built, length: 3544
+🧠 Sending prompt to Claude...
+✅ Claude generated reply: "Great timeline! Are you already working with a real estate agent? We'd love to help you plan for a successful spring sale! 🏡"
+🛠️ Lead 470 is in DEV MODE - all limits disabled
+🛠️ DEV MODE: Skipping all escalation checks for lead 470
+AI Response: Great timeline! Are you already working with a real estate agent? We'd love to help you plan for a successful spring sale! 🏡
+Should Pause: false
+SMS queued successfully. Job ID: 12
+AI response queued successfully (Job ID: 12)
+Message will be sent in 45 seconds for natural timing
+Processing SMS job 12: { to: '+17068184445', leadId: '470', retryCount: 0 }
+📱 SENDING SMS ========================
+   To: +17068184445
+   From: +18662981158
+   Message: "Great timeline! Are you already working with a rea..."
+   Environment: development
+   ✅ Using configured FROM number: +18662981158
+✅ SMS sent successfully. SID: SMc8a38e0fdfa5cded61bc7de89f1ed47b
+Updating notes for lead 470, size: 9958 chars
+First 200 chars of notes: [EUGENIA_MESSAGES_START]{"conversations":[{"id":"msg_1750389343354_qcf07d2hh","direction":"inbound","type":"sms","content":"hello","timestamp":"2025-06-20T03:15:43.118Z","fubLogged":false},{"id":"msg_
+Update response: Success
+SMS stored in FUB notes for lead 470
+Logging outbound SMS to FUB for lead 470: Great timeline! Are you already working with a real estate agent? We'd love to help you plan for a successful spring sale! 🏡
+Successfully logged SMS to FUB: 3342
+SMS logged to FUB text messages for lead 470
+SMS job 12 completed successfully

@@ -25,6 +25,26 @@ class CRMFactory {
    */
   static async getAdapter(tenantId) {
     try {
+      // For MVP, use demo tenant credentials from env when Supabase isn't available
+      // or for the primary test tenant
+      if (tenantId === 'demo-tenant' || !supabase || tenantId === '7c563f31-36bd-4414-ad44-ef9c19c1c6b1') {
+        console.log('Using FUB configuration from environment');
+        const FollowUpBossAdapter = require('./adapters/FollowUpBossAdapter');
+        
+        const config = {
+          credentials: {
+            api_key: process.env.DEMO_FUB_API_KEY || process.env.FUB_API_KEY,
+            x_system: process.env.DEMO_FUB_X_SYSTEM || process.env.FUB_X_SYSTEM,
+            x_system_key: process.env.DEMO_FUB_X_SYSTEM_KEY || process.env.FUB_X_SYSTEM_KEY
+          },
+          settings: {
+            user_id: process.env.FUB_USER_ID_FOR_AI || '1'
+          }
+        };
+        
+        return new FollowUpBossAdapter(tenantId, config);
+      }
+      
       // Get CRM integration config from database
       const integration = await this.getCRMIntegration(tenantId);
       
@@ -43,8 +63,15 @@ class CRMFactory {
         throw new Error(`Unsupported CRM type: ${integration.crm_type}`);
       }
 
-      // Decrypt credentials
-      const credentials = await this.decryptCredentials(integration.vault_secret_id);
+      // Get credentials - use direct credentials if no vault_secret_id
+      let credentials;
+      if (integration.credentials) {
+        // Use credentials directly from database (for MVP)
+        credentials = integration.credentials;
+      } else {
+        // Decrypt from vault if available
+        credentials = await this.decryptCredentials(integration.vault_secret_id);
+      }
       
       // Create adapter config
       const config = {

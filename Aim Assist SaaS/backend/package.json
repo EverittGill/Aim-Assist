@@ -6,34 +6,38 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
+    "dev:all": "cd .. && ./start-all.sh",
     "test": "jest",
     "lint": "eslint src/",
-    "migrate": "node scripts/migrate.js"
+    "migrate": "node run-migrations.js",
+    "migrate:sql": "node scripts/migrate.js",
+    "test:db": "node test-supabase.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.17.0",
+    "@google/generative-ai": "^0.7.1",
     "@supabase/supabase-js": "^2.39.3",
+    "axios": "^1.6.5",
     "bcryptjs": "^2.4.3",
-    "bull": "^4.12.0",
+    "bull": "^4.16.5",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "redis": "^4.6.12",
+    "morgan": "^1.10.0",
+    "openai": "^4.24.7",
+    "redis": "^4.7.1",
     "stripe": "^14.11.0",
     "twilio": "^4.20.0",
-    "@google/generative-ai": "^0.7.1",
-    "@anthropic-ai/sdk": "^0.17.0",
-    "openai": "^4.24.7",
-    "axios": "^1.6.5",
-    "morgan": "^1.10.0",
-    "helmet": "^7.1.0"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2",
-    "jest": "^29.7.0",
+    "@types/node": "^20.10.6",
     "eslint": "^8.56.0",
-    "@types/node": "^20.10.6"
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2"
   },
   "engines": {
     "node": ">=18.0.0"

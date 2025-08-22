@@ -16,7 +16,10 @@ if (missingVars.length > 0) {
 }
 
 // Create Supabase client with service key for full admin access
-const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
+const supabase = process.env.SUPABASE_URL && 
+                 process.env.SUPABASE_SERVICE_KEY && 
+                 process.env.SUPABASE_URL !== 'your_supabase_project_url' &&
+                 process.env.SUPABASE_SERVICE_KEY !== 'your_supabase_service_key'
   ? createClient(
       process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_KEY,
