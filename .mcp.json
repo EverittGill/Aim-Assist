@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "type": "stdio",
+      "command": "/tmp/chrome-devtools-mcp/venv/bin/python3",
+      "args": [
+        "/tmp/chrome-devtools-mcp/server.py"
+      ],
+      "env": {
+        "CDP_PORT": "9222"
+      }
+    }
+  }
+}

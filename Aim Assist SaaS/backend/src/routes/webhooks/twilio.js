@@ -262,8 +262,14 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
     console.log(`✅ Extraction queued for lead ${leadId}`);
     
     // Check if AI should respond
-    if (conversation.ai_enabled && conversation.status === 'active') {
+    const shouldRespond = conversation.ai_enabled !== false && conversation.status === 'active';
+    console.log(`🤖 AI should respond: ${shouldRespond} (ai_enabled: ${conversation.ai_enabled}, status: ${conversation.status})`);
+    
+    if (shouldRespond) {
+      console.log(`🚀 Generating AI response for lead ${leadId} in tenant ${tenantId}`);
       await generateAndQueueAIResponse(tenantId, leadId, conversation.id, messageContent);
+    } else {
+      console.log(`⏸️ AI not responding (ai_enabled: ${conversation.ai_enabled}, status: ${conversation.status})`);
     }
     
   } catch (error) {
@@ -275,17 +281,57 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
  * Generate and queue AI response with Claude
  */
 async function generateAndQueueAIResponse(tenantId, leadId, conversationId, currentMessage) {
+  console.log(`\n🔄 generateAndQueueAIResponse called:`, {
+    tenantId,
+    leadId,
+    conversationId,
+    messagePreview: currentMessage.substring(0, 50)
+  });
+  
   try {
     const conversationService = new ConversationService(tenantId);
     const ClaudeService = require('../../services/ai/ClaudeService');
     const claudeService = new ClaudeService(tenantId);
+    console.log(`✅ Claude service initialized for tenant ${tenantId}`);
     
     // Get conversation history (limited for context)
+    console.log(`📖 Getting conversation history for lead ${leadId}...`);
     const messages = await conversationService.getHistory(leadId, 50);
+    console.log(`📖 Got ${messages.length} messages from conversation history`);
     
-    // Get lead details from CRM
-    const adapter = await CRMFactory.getAdapter(tenantId);
-    const lead = await adapter.getLead(leadId);
+    // Get lead details from SUPABASE
+    console.log(`🔍 Fetching lead details from Supabase for lead ${leadId}...`);
+    const { supabase } = require('../../config/supabase');
+    
+    // Try to fetch by CRM lead ID first (leadId is usually the CRM ID like "622")
+    let { data: lead, error: leadError } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('crm_lead_id', leadId)
+      .single();
+    
+    // If not found and leadId looks like a UUID, try by database ID
+    if (!lead && leadId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      const result = await supabase
+        .from('leads')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('id', leadId)
+        .single();
+      lead = result.data;
+      leadError = result.error;
+    }
+    
+    console.log(`🔍 Lead fetch result:`, { found: !!lead, error: leadError?.message });
+    
+    if (leadError || !lead) {
+      console.error('Lead not found in Supabase:', leadError);
+      // Fallback to CRM if needed
+      const adapter = await CRMFactory.getAdapter(tenantId);
+      const crmLead = await adapter.getLead(leadId);
+      return crmLead;
+    }
     
     // Build context for AI
     const context = {
@@ -302,6 +348,7 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
     };
     
     // Generate AI response using Claude
+    console.log(`📝 Calling Claude with context for lead ${leadId}...`);
     const response = await claudeService.generateResponse({
       leadId,
       leadName: context.lead.name,
@@ -316,6 +363,12 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
         propertyType: lead.custom_fields?.property_type
       },
       agencyName: process.env.USER_AGENCY_NAME || 'our team'
+    });
+    
+    console.log(`🤖 Claude response received:`, {
+      hasResponse: !!response,
+      responseType: typeof response,
+      responseLength: response ? (typeof response === 'string' ? response.length : JSON.stringify(response).length) : 0
     });
     
     if (response) {
@@ -347,7 +400,9 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
       // Log AI response to FUB IMMEDIATELY (before SMS is sent)
       try {
         const adapter = await CRMFactory.getAdapter(tenantId);
-        const fromPhone = process.env.TWILIO_FROM_NUMBER || '+18662981158';
+        // Get tenant's actual phone number, not hardcoded
+        const fromPhone = await TenantPhoneService.getTenantPrimaryPhone(tenantId) || 
+                         process.env.TWILIO_FROM_NUMBER || '+18662981158';
         
         const logged = await adapter.logMessage(leadId, {
           direction: 'outbound',
@@ -381,19 +436,24 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
         }
         
         // Send notification to agent
-        if (process.env.USER_NOTIFICATION_PHONE) {
+        // Get tenant's notification phone from configuration
+        const TenantService = require('../../services/TenantService');
+        const tenantConfig = await TenantService.getTenantConfig(tenantId);
+        const notificationPhone = tenantConfig.settings?.notification_phone || process.env.USER_NOTIFICATION_PHONE;
+        
+        if (notificationPhone) {
           // Build FUB lead URL
           const fubLeadUrl = `https://app.followupboss.com/2/people/view/${leadId}`;
           
           await queueManager.queueSMS({
             tenantId,
             leadId: null, // System message
-            to: process.env.USER_NOTIFICATION_PHONE,
+            to: notificationPhone,
             message: `🎯 QUALIFIED LEAD: ${lead.first_name || 'Lead'} ${lead.last_name || ''} (${leadPhone})\nReason: ${response.qualification?.escalationReason || 'Qualified'}\nScore: ${response.qualification?.qualificationScore || 0}%\n\nView in FUB: ${fubLeadUrl}`,
             conversationId: null,
             delay: 0 // Send immediately
           });
-          console.log('📱 Agent notification queued with FUB link');
+          console.log(`📱 Agent notification queued to ${notificationPhone} with FUB link`);
         }
       }
       
@@ -455,12 +515,13 @@ async function getTenantFromPhone(phoneNumber) {
   const tenantId = await TenantPhoneService.getTenantFromPhone(phoneNumber);
   
   if (!tenantId) {
-    console.error(`⚠️ No tenant found for phone ${phoneNumber}`);
-    // For now, fallback to demo tenant for testing
-    // In production, this should reject the message
-    return '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    console.error(`❌ No tenant found for phone ${phoneNumber}`);
+    console.error('This phone number must be registered to a tenant in the phone_numbers table');
+    // In multi-tenant system, we MUST reject messages to unregistered numbers
+    return null;
   }
   
+  console.log(`✅ Found tenant ${tenantId} for phone ${phoneNumber}`);
   return tenantId;
 }
 

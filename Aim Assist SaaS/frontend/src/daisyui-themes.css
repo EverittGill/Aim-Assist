@@ -1,0 +1,230 @@
+/* DaisyUI Theme Definitions */
+[data-theme="eugenia"] {
+  color-scheme: light;
+  --p: 24 31% 66%;
+  --pf: 24 31% 61%;
+  --pc: 30 25% 99%;
+  --s: 30 36% 66%;
+  --sf: 30 36% 61%;
+  --sc: 30 25% 99%;
+  --a: 22 46% 62%;
+  --af: 22 46% 57%;
+  --ac: 30 25% 99%;
+  --n: 30 4% 44%;
+  --nf: 30 4% 39%;
+  --nc: 30 25% 99%;
+  --b1: 30 25% 99%;
+  --b2: 30 25% 96%;
+  --b3: 30 17% 93%;
+  --bc: 30 15% 15%;
+  --in: 207 73% 57%;
+  --su: 88 50% 60%;
+  --wa: 36 100% 50%;
+  --er: 4 90% 58%;
+}
+
+[data-theme="eugenia-dark"] {
+  color-scheme: dark;
+  --p: 24 23% 72%;
+  --pf: 24 23% 67%;
+  --pc: 30 15% 15%;
+  --s: 24 26% 74%;
+  --sf: 24 26% 69%;
+  --sc: 30 15% 15%;
+  --a: 24 34% 78%;
+  --af: 24 34% 73%;
+  --ac: 30 15% 15%;
+  --n: 24 9% 60%;
+  --nf: 24 9% 55%;
+  --nc: 30 25% 96%;
+  --b1: 30 15% 15%;
+  --b2: 90 9% 26%;
+  --b3: 30 4% 44%;
+  --bc: 30 25% 96%;
+  --in: 207 90% 64%;
+  --su: 88 50% 67%;
+  --wa: 36 100% 65%;
+  --er: 0 53% 67%;
+}
+
+[data-theme="eugenia-beach"] {
+  color-scheme: light;
+  --p: 60 100% 50%;      /* Pure Yellow #FFFF00 */
+  --pf: 50 100% 45%;     /* Darker yellow on hover */
+  --pc: 0 0% 0%;         /* Black text on yellow buttons */
+  --s: 60 100% 50%;      /* Secondary also yellow */
+  --sf: 50 100% 45%;     
+  --sc: 0 0% 0%;         
+  --a: 60 100% 50%;      /* Accent yellow */
+  --af: 50 100% 45%;     
+  --ac: 0 0% 0%;         
+  --n: 0 0% 0%;          /* Pure black for borders */
+  --nf: 0 0% 15%;        
+  --nc: 60 100% 50%;     /* Yellow text on black */
+  --b1: 60 100% 50%;     /* Pure Yellow background #FFFF00 */
+  --b2: 50 100% 45%;     /* Slightly darker yellow */
+  --b3: 45 100% 40%;     /* Even darker yellow */
+  --bc: 0 0% 0%;         /* Pure Black text #000000 */
+  --in: 0 0% 0%;         /* Black for all status colors */
+  --su: 0 0% 0%;         
+  --wa: 0 0% 0%;         
+  --er: 0 0% 0%;         
+  --inc: 60 100% 50%;    /* Yellow background for status */
+  --suc: 60 100% 50%;    
+  --wac: 60 100% 50%;    
+  --erc: 60 100% 50%;    
+}
+
+/* Basic DaisyUI component styles */
+.btn {
+  display: inline-flex;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  border-color: transparent;
+  border-radius: 0.5rem;
+  border-width: 1px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  background-color: hsl(var(--n));
+  color: hsl(var(--nc));
+}
+
+.btn-primary {
+  background-color: hsl(var(--p));
+  color: hsl(var(--pc));
+  border-color: hsl(var(--p));
+}
+
+.btn-primary:hover {
+  background-color: hsl(var(--pf));
+  border-color: hsl(var(--pf));
+}
+
+.btn-secondary {
+  background-color: hsl(var(--s));
+  color: hsl(var(--sc));
+}
+
+.btn-accent {
+  background-color: hsl(var(--a));
+  color: hsl(var(--ac));
+}
+
+.btn-ghost {
+  background-color: transparent;
+  border-color: transparent;
+  color: currentColor;
+}
+
+.btn-ghost:hover {
+  background-color: hsl(var(--bc) / 0.2);
+}
+
+.btn-sm {
+  height: 2rem;
+  min-height: 2rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.btn-circle {
+  height: 3rem;
+  width: 3rem;
+  border-radius: 9999px;
+  padding: 0;
+}
+
+.bg-base-100 {
+  background-color: hsl(var(--b1));
+}
+
+.bg-base-200 {
+  background-color: hsl(var(--b2));
+}
+
+.bg-base-300 {
+  background-color: hsl(var(--b3));
+}
+
+.text-base-content {
+  color: hsl(var(--bc));
+}
+
+.text-primary {
+  color: hsl(var(--p));
+}
+
+.text-primary-content {
+  color: hsl(var(--pc));
+}
+
+.bg-primary {
+  background-color: hsl(var(--p));
+}
+
+.border-base-300 {
+  border-color: hsl(var(--b3));
+}
+
+.from-base-100 {
+  --tw-gradient-from: hsl(var(--b1));
+}
+
+.to-base-200 {
+  --tw-gradient-to: hsl(var(--b2));
+}
+
+.input {
+  flex-shrink: 1;
+  height: 3rem;
+  padding: 0 1rem;
+  border-width: 1px;
+  border-color: hsl(var(--bc) / 0.2);
+  background-color: hsl(var(--b1));
+  border-radius: 0.5rem;
+  width: 100%;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.input:focus {
+  outline: 2px solid hsl(var(--p));
+  outline-offset: 2px;
+  border-color: hsl(var(--p));
+}
+
+.input-bordered {
+  border-color: hsl(var(--bc) / 0.2);
+}
+
+.input-sm {
+  height: 2.25rem;
+  padding-left: 2.25rem;
+  padding-right: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.form-control {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fix search input alignment */
+.relative .input {
+  padding-left: 2.25rem;
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  width: 100%;
+  min-height: 4rem;
+}

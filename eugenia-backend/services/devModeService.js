@@ -8,10 +8,10 @@ class DevModeService {
     // In-memory storage for dev mode settings (in production, use Redis or DB)
     this.devModeLeads = new Set();
     
-    // Always enable dev mode for lead 470 in development environment
-    if (process.env.NODE_ENV !== 'production') {
-      this.devModeLeads.add('470');
-      console.log('🛠️ Dev mode auto-enabled for Test Lead 470');
+    // Auto-enable dev mode for test lead in development environment
+    if (process.env.NODE_ENV !== 'production' && process.env.TEST_LEAD_ID) {
+      this.devModeLeads.add(process.env.TEST_LEAD_ID);
+      console.log(`🛠️ Dev mode auto-enabled for Test Lead ${process.env.TEST_LEAD_ID}`);
     }
   }
 

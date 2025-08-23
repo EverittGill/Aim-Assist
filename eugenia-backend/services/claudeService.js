@@ -2,6 +2,8 @@ const Anthropic = require('@anthropic-ai/sdk');
 const promptService = require('./promptService');
 const qualificationService = require('./qualificationService');
 const devModeService = require('./devModeService');
+const conversationSummarizer = require('./conversationSummarizer');
+const leadScoringService = require('./leadScoringService');
 
 class ClaudeService {
   constructor(apiKey) {
@@ -14,7 +16,7 @@ class ClaudeService {
       apiKey: apiKey
     });
     
-    console.log('Claude 3.5 Sonnet configured successfully');
+    console.log('Claude Sonnet 4 configured successfully');
   }
 
   async generateInitialOutreach(leadDetails, agencyName) {
@@ -23,7 +25,7 @@ class ClaudeService {
     try {
       console.log('🤖 Generating initial outreach with Claude...');
       const message = await this.client.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 200,
         temperature: 0.7,
         messages: [{
@@ -32,7 +34,13 @@ class ClaudeService {
         }]
       });
 
-      const response = message.content[0].text.trim();
+      let response = message.content[0].text.trim();
+      
+      // Clean up any explanation text from Claude (remove everything after first newline)
+      if (response.includes('\n')) {
+        response = response.split('\n')[0].trim();
+      }
+      
       console.log(`✅ Claude generated initial outreach: "${response}"`);
       return response;
     } catch (error) {
@@ -55,8 +63,17 @@ class ClaudeService {
     const qualificationStatus = qualificationService.analyzeQualificationStatus(allMessages);
     console.log(`📊 ${qualificationService.getQualificationSummary(qualificationStatus)}`);
     
-    // Format conversation history - Claude can handle much more context!
-    const formattedHistory = this.formatConversationHistory(conversationHistory, leadDetails.name);
+    // Calculate lead score for intelligent response
+    const leadScore = leadScoringService.calculateScore(leadDetails, allMessages, qualificationStatus);
+    console.log(`🎯 Lead Score: ${leadScore.total.toFixed(1)}/100 - ${leadScore.grade}`);
+    if (leadScore.insights.length > 0) {
+      console.log(`💡 Insights: ${leadScore.insights.join(' | ')}`);
+    }
+    
+    // Process conversation with smart windowing
+    const processedConvo = conversationSummarizer.processConversation(conversationHistory, leadDetails);
+    const formattedHistory = conversationSummarizer.formatForPrompt(processedConvo, leadDetails.name);
+    console.log(`📚 Context: ${processedConvo.olderMessageCount} older msgs summarized, ${processedConvo.recentMessageCount} recent msgs in full`);
     
     console.log(`📊 Generating Claude reply with context:
     - Lead: ${leadDetails.name} (ID: ${leadDetails.id})
@@ -71,7 +88,9 @@ class ClaudeService {
       emailString: leadDetails.email || leadDetails.emails?.[0]?.value || 'Not provided',
       phoneString: leadDetails.phone || leadDetails.phones?.[0]?.value || 'Not provided',
       customFieldsString: this.formatCustomFields(leadDetails.customFields),
-      notesString: leadDetails.notes || leadDetails.background || 'No notes'
+      notesString: leadDetails.notes || leadDetails.background || 'No notes',
+      extractedFacts: processedConvo.extractedFacts,
+      leadScore: leadScore
     };
     
     const prompt = this.buildConversationPrompt({
@@ -85,11 +104,15 @@ class ClaudeService {
     console.log('📝 Prompt built, length:', prompt.length);
     
     try {
+      // Dynamic temperature based on conversation stage
+      const temperature = this.getDynamicTemperature(leadScore, qualificationStatus, allMessages.length);
+      console.log(`🌡️ Using temperature: ${temperature} (based on lead score and stage)`);
+      
       console.log('🧠 Sending prompt to Claude...');
       const message = await this.client.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 200,
-        temperature: 0.7,
+        temperature: temperature,
         messages: [{
           role: 'user',
           content: prompt
@@ -97,6 +120,12 @@ class ClaudeService {
       });
 
       let response = message.content[0].text.trim();
+      
+      // Clean up any explanation text from Claude (remove everything after first newline)
+      if (response.includes('\n')) {
+        response = response.split('\n')[0].trim();
+      }
+      
       console.log(`✅ Claude generated reply: "${response}"`);
       
       // Validate SMS length
@@ -140,35 +169,27 @@ class ClaudeService {
       .join(', ');
   }
   
-  formatConversationHistory(messages, leadName) {
-    if (!messages || messages.length === 0) {
-      console.log('🔍 formatConversationHistory: No messages provided');
-      return "No previous messages.";
+  /**
+   * Get dynamic temperature based on conversation context
+   */
+  getDynamicTemperature(leadScore, qualificationStatus, messageCount) {
+    // Hot leads need more focused responses
+    if (leadScore.total >= 85) {
+      return 0.3; // Very focused, direct
     }
     
-    console.log(`🔍 formatConversationHistory: Processing ${messages.length} messages for ${leadName}`);
+    // Qualification questions need consistency
+    if (!qualificationStatus.qualificationComplete && messageCount < 5) {
+      return 0.4; // Consistent qualification approach
+    }
     
-    // Claude can handle MUCH more context - use all messages!
-    const recentMessages = messages;
+    // Building rapport needs more creativity
+    if (leadScore.engagement < 50) {
+      return 0.8; // More creative to boost engagement
+    }
     
-    const formatted = recentMessages.map(msg => {
-      const messageContent = msg.text || msg.body || msg.content || '';
-      
-      let sender;
-      if (msg.sender) {
-        sender = msg.sender === 'Eugenia' ? 'Eugenia' : leadName;
-      } else if (msg.direction) {
-        sender = msg.direction === 'inbound' ? leadName : 'Eugenia';
-      } else {
-        sender = 'Unknown';
-      }
-      
-      return `${sender}: ${messageContent}`;
-    }).join('\n');
-    
-    console.log(`🔍 formatConversationHistory: Formatted history length: ${formatted.length} chars`);
-    
-    return formatted;
+    // Default balanced temperature
+    return 0.6;
   }
   
   buildInitialOutreachPrompt(leadDetails, agencyName) {
@@ -216,36 +237,69 @@ Generate only the message text, nothing else.`;
       return customPrompt;
     }
     
-    // Otherwise use Claude-optimized prompt
+    // Otherwise use Claude-optimized prompt with chain-of-thought
     const leadName = leadDetails.firstName || leadDetails.name || 'there';
-    const hasTimeline = qualificationStatus.hasTimeline;
-    const hasAgentStatus = qualificationStatus.hasAgentStatus;
-    const hasFinancing = qualificationStatus.hasFinancing;
+    const score = leadDetails.leadScore || { total: 50, engagement: 50, grade: 'Unknown' };
+    const facts = leadDetails.extractedFacts || {};
     
+    // Determine conversation strategy based on score
+    let strategy = '';
     let focusPoint = '';
-    if (!hasTimeline) {
-      focusPoint = 'Find out their timeline to move.';
-    } else if (!hasAgentStatus) {
-      focusPoint = 'Ask if they are already working with another agent.';
-    } else if (!hasFinancing) {
-      focusPoint = 'Ask about their financing (pre-approved or cash).';
+    
+    if (score.total >= 85) {
+      strategy = 'This is a HOT lead. Be direct and move toward scheduling.';
+      focusPoint = 'Suggest scheduling a call or property tour.';
+    } else if (score.total >= 70) {
+      strategy = 'This is a WARM lead. Focus on missing qualification info.';
+      if (!qualificationStatus.qualifyingQuestions?.timeline?.answered) {
+        focusPoint = 'Discover their timeline to buy/sell.';
+      } else if (!qualificationStatus.qualifyingQuestions?.financing?.answered) {
+        focusPoint = 'Ask about financing (pre-approved or cash).';
+      } else {
+        focusPoint = 'Move toward scheduling next steps.';
+      }
+    } else if (score.engagement < 50) {
+      strategy = 'Low engagement detected. Try a different approach to spark interest.';
+      focusPoint = 'Ask an engaging question about their dream home or situation.';
+    } else {
+      strategy = 'Build rapport and gather information.';
+      focusPoint = 'Continue qualifying naturally.';
     }
     
-    return `You are Eugenia, a friendly real estate assistant for ${agencyName}.
+    // Build facts summary for context
+    let factsSummary = '';
+    if (facts.timeline) factsSummary += `Timeline: ${facts.timeline}. `;
+    if (facts.priceRange) factsSummary += `Budget: ${facts.priceRange}. `;
+    if (facts.location) factsSummary += `Location: ${facts.location}. `;
+    if (facts.propertyType) factsSummary += `Type: ${facts.propertyType}. `;
+    
+    return `You are Eugenia, an expert real estate ISA for ${agencyName}.
 
-Lead: ${leadName}
-Previous conversation:
+LEAD INTELLIGENCE:
+- Name: ${leadName}
+- Score: ${score.grade} (${score.total ? score.total.toFixed(0) : '?'}/100)
+- ${factsSummary || 'Limited information gathered so far.'}
+- Insights: ${score.insights ? score.insights.join(', ') : 'Still assessing lead quality.'}
+
+STRATEGY: ${strategy}
+
+CONVERSATION:
 ${conversationHistory}
 
 Their latest message: "${currentMessage}"
 
-Generate a natural, conversational response. Requirements:
-- Keep under 160 characters for SMS
-- Be warm and personable, not robotic
-- ${focusPoint || 'Continue the conversation naturally'}
-- Do NOT use emojis
-- Do NOT repeat questions they've already answered
-- If they ask to speak with an agent or schedule something, acknowledge and say the agent will reach out
+Think step by step:
+1. What key information do they reveal in this message?
+2. What's the most important thing to discover or accomplish next?
+3. How can I move them closer to scheduling with an agent?
+
+Based on this analysis, generate a response that:
+- Is under 160 characters for SMS
+- ${focusPoint}
+- Sounds natural and conversational, not scripted
+- Shows you remember what they've already shared
+- NO emojis
+- If they want to schedule or speak with agent, confirm the agent will call them
 
 Generate only the message text, nothing else.`;
   }

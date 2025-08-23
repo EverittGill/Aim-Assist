@@ -111,17 +111,32 @@ class TwilioService {
    * Get tenant's primary phone number
    */
   async getTenantPhoneNumber(tenantId) {
-    // In production, fetch from database
-    // For now, return mock or configured number
+    // Use TenantPhoneService to get the correct phone for this tenant
+    const TenantPhoneService = require('../TenantPhoneService');
+    
+    try {
+      // Try to get tenant's primary phone from database
+      const primaryPhone = await TenantPhoneService.getTenantPrimaryPhone(tenantId);
+      if (primaryPhone) {
+        console.log(`📱 Using tenant ${tenantId}'s primary phone: ${primaryPhone}`);
+        return primaryPhone;
+      }
+    } catch (error) {
+      console.warn(`⚠️ Could not get tenant phone from database: ${error.message}`);
+    }
+    
+    // Fallback for testing/development when database not available
     if (!this.isConfigured) {
       return this.mockPhoneNumbers[tenantId] || this.mockPhoneNumbers.default;
     }
     
-    // Check both DEMO and regular env vars
+    // Last resort: use environment variable (for single-tenant testing only)
     const fromNumber = process.env.DEMO_TWILIO_FROM_NUMBER || process.env.TWILIO_FROM_NUMBER;
     if (!fromNumber) {
-      throw new Error('No Twilio from number configured');
+      throw new Error(`No phone number configured for tenant ${tenantId}`);
     }
+    
+    console.warn(`⚠️ Using fallback env phone for tenant ${tenantId}: ${fromNumber}`);
     return fromNumber;
   }
 

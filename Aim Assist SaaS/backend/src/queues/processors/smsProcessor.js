@@ -21,7 +21,13 @@ module.exports = async function processSMS(job) {
     messageId
   } = job.data;
   
-  console.log(`📱 Processing SMS job ${job.id} for tenant ${tenantId}`);
+  console.log(`\n📱 Processing SMS job ${job.id}:`, {
+    tenantId,
+    leadId,
+    to,
+    messagePreview: message ? message.substring(0, 50) : 'No message',
+    hasConversationId: !!conversationId
+  });
   
   try {
     // Create Twilio service for tenant
@@ -34,7 +40,12 @@ module.exports = async function processSMS(job) {
     if (leadId && tenantId) {
       try {
         const adapter = await CRMFactory.getAdapter(tenantId);
-        const fromPhone = process.env.TWILIO_FROM_NUMBER || '+18662981158';
+        // Get the actual phone number used by Twilio service
+        const TenantPhoneService = require('../../services/TenantPhoneService');
+        const fromPhone = await TenantPhoneService.getTenantPrimaryPhone(tenantId) || 
+                         process.env.TWILIO_FROM_NUMBER || '+18662981158';
+        
+        console.log(`📞 Using from phone: ${fromPhone} for tenant ${tenantId}`);
         
         const logged = await adapter.logMessage(leadId, {
           direction: 'outbound',

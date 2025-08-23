@@ -203,8 +203,8 @@ The entire reason for building this app is that Raiya Text ($400/month) doesn't 
 - Clear logging to distinguish success/skip/failure
 
 ### Test Lead Restrictions
-- ONLY use Test Everitt (ID: 470) for testing
-- This is the ONLY lead allowed for testing per user instructions
+- Use the test lead ID provided by user for testing
+- Set TEST_LEAD_ID in .env for consistent testing
 - Never use production leads for testing
 
 ### User Preferences
@@ -387,13 +387,13 @@ When an SMS arrives at Eugenia's Twilio number:
 
 **Implementation**:
 1. **Frontend Toggle** (`src/components/SettingsPanel.js`):
-   - Toggle switch for lead 470 in settings panel
+   - Toggle switch for test lead in settings panel
    - Shows active features when enabled
    - Persists state to localStorage
 
 2. **Backend Service** (`services/devModeService.js`):
    - Tracks per-lead dev mode status
-   - Auto-enables for lead 470 in development environment
+   - Auto-enables for TEST_LEAD_ID in development environment
    - API endpoints: `/api/dev-mode` (POST), `/api/dev-mode/:leadId` (GET)
 
 3. **Integration Points**:
@@ -402,7 +402,7 @@ When an SMS arrives at Eugenia's Twilio number:
    - `twilioService.js`: Actually sends SMS when `ALLOW_DEV_SMS=true`
 
 **Console Indicators**:
-- `🛠️ Dev mode auto-enabled for Test Lead 470` on server start
+- `🛠️ Dev mode auto-enabled for Test Lead [ID]` on server start
 - `🛠️ [DEV MODE] Message limit check bypassed` when processing messages
 - `📱 [DEV MODE] Would send notification` when notifications skipped
 
@@ -467,7 +467,7 @@ When qualification is complete, Eugenia sends a personalized follow-up:
 **Usage**:
 ```bash
 cd eugenia-backend
-npm run cleanup:test     # Clean Test Everitt (lead 470)
+npm run cleanup:test     # Clean test lead (from TEST_LEAD_ID)
 npm run cleanup -- 123   # Clean any lead by ID
 npm run clear:history    # Clear conversation history
 npm run reset:status     # Reset status fields
@@ -555,7 +555,7 @@ npm run reset:status     # Reset status fields
    - Install `@anthropic-ai/sdk`
    - Create `claudeService.js` with same interface
    - Add feature flag for gradual migration
-   - Test with lead 470 first
+   - Test with TEST_LEAD_ID first
 
 3. **Simplified Claude Prompt**:
    ```
@@ -632,7 +632,7 @@ When a lead texts Eugenia's Twilio number (+18662981158):
 4. **AI Pause Checks**:
    - Permanent pause: `customEugeniaTalkingStatus === 'inactive'`
    - Temporary pause: Checks `customEugeniaPausedUntil` timestamp
-   - Dev mode: Bypasses all pause checks for lead 470
+   - Dev mode: Bypasses all pause checks for test lead
 
 5. **Context Building**:
    - Fetches up to 500 messages from FUB conversation history
@@ -768,7 +768,7 @@ All phone numbers converted to E.164 format:
 - No message limits or pauses
 - Full SMS sending (with `ALLOW_DEV_SMS=true`)
 - Detailed console logging
-- Auto-enabled for lead 470 in development
+- Auto-enabled for TEST_LEAD_ID in development
 
 ### Environment Configuration
 
@@ -820,7 +820,7 @@ ADMIN_PASSWORD_HASH=            # Bcrypt hash of password
 
 ### Testing Guidelines
 
-1. **Test Lead**: Only use Test Everitt (ID: 470)
+1. **Test Lead**: Use lead ID provided by user (set as TEST_LEAD_ID)
 2. **Dev Mode**: Toggle in settings for unrestricted testing
 3. **Console Logs**: Detailed output for debugging
 4. **Queue Monitor**: Check `/api/queues/stats` for job status

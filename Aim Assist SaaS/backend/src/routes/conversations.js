@@ -4,13 +4,53 @@ const ConversationService = require('../services/ConversationService');
 const AIService = require('../services/ai/AIService');
 const CRMFactory = require('../services/crm/CRMFactory');
 const TwilioService = require('../services/messaging/TwilioService');
+const { supabase } = require('../config/supabase');
 
 /**
  * Multi-tenant conversation and messaging routes
  */
 
+// Supabase auth middleware
+const requireAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const token = authHeader.substring(7);
+    
+    // Verify with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      console.error('Auth error:', error);
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Get tenant for this user
+    const { data: tenant, error: tenantError } = await supabase
+      .from('tenants')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (tenantError || !tenant) {
+      console.error('Tenant lookup error:', tenantError);
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+
+    req.user = user;
+    req.tenantId = tenant.id;
+    req.tenant = tenant;
+    next();
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+};
+
 module.exports = (authService) => {
-  const requireAuth = authService?.createAuthMiddleware() || ((req, res, next) => next());
 
   // Get conversation history for a lead
   router.get('/:leadId', requireAuth, async (req, res) => {
@@ -46,11 +86,15 @@ module.exports = (authService) => {
         });
       }
       
-      // Get lead details
-      const adapter = await CRMFactory.getAdapter(tenantId);
-      const lead = await adapter.getLead(lead_id);
+      // Get lead details FROM SUPABASE
+      const { data: lead, error: leadError } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .or(`crm_lead_id.eq.${lead_id},id.eq.${lead_id}`)
+        .single();
       
-      if (!lead || !lead.phone) {
+      if (leadError || !lead || !lead.phone) {
         return res.status(400).json({ 
           error: 'Lead not found or missing phone number' 
         });
@@ -64,23 +108,10 @@ module.exports = (authService) => {
         // from number will be auto-determined by TwilioService
       );
       
-      // Log to FUB first for visibility (even if Supabase fails)
-      try {
-        await adapter.logMessage(lead_id, {
-          direction: 'outbound',
-          content: content,
-          from: result.from || process.env.DEMO_TWILIO_FROM_NUMBER,
-          to: lead.phone
-        });
-        console.log('✅ Message logged to FUB');
-      } catch (fubError) {
-        console.error('Failed to log to FUB:', fubError.message);
-      }
-      
-      // Store message in conversation history (Supabase)
+      // Store message in Supabase FIRST (source of truth)
       try {
         const conversationService = new ConversationService(tenantId);
-        const conversation = await conversationService.getOrCreateConversation(lead_id);
+        const conversation = await conversationService.getOrCreateConversation(lead.crm_lead_id || lead.id);
         await conversationService.addMessage(conversation.id, {
           lead_id: conversation.lead_id,
           direction: 'outbound',
@@ -88,15 +119,30 @@ module.exports = (authService) => {
           sender_type: 'ai',
           channel_type: type,
           content: content,
-          status: 'sent',  // Use 'sent' instead of Twilio's status
-          provider_sid: result.sid,  // Changed from twilio_sid
+          status: 'sent',
+          provider_sid: result.sid,
           from_phone: result.from,
           to_phone: result.to
         });
         console.log('✅ Message saved to Supabase');
       } catch (dbError) {
         console.error('Failed to save to Supabase:', dbError.message);
-        // Don't throw - SMS was sent and logged to FUB
+        // Still continue - SMS was sent
+      }
+      
+      // Then sync to CRM for visibility (background task)
+      try {
+        const adapter = await CRMFactory.getAdapter(tenantId);
+        await adapter.logMessage(lead.crm_lead_id, {
+          direction: 'outbound',
+          content: content,
+          from: result.from || process.env.DEMO_TWILIO_FROM_NUMBER,
+          to: lead.phone
+        });
+        console.log('✅ Message synced to FUB');
+      } catch (crmError) {
+        console.error('⚠️ Failed to sync to CRM (will retry):', crmError.message);
+        // Could queue for retry here
       }
       
       res.json({ 
@@ -130,9 +176,17 @@ module.exports = (authService) => {
         });
       }
       
-      // Get lead details
-      const adapter = await CRMFactory.getAdapter(tenantId);
-      const lead = await adapter.getLead(lead_id);
+      // Get lead details FROM SUPABASE
+      const { data: lead, error: leadError } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .or(`crm_lead_id.eq.${lead_id},id.eq.${lead_id}`)
+        .single();
+      
+      if (leadError || !lead) {
+        return res.status(404).json({ error: 'Lead not found' });
+      }
       
       // Build context for AI
       const context = {
@@ -143,7 +197,7 @@ module.exports = (authService) => {
         },
         conversation: conversation || [],
         template: template,
-        agency_name: process.env.DEFAULT_AGENCY_NAME || 'Your Agency'
+        agency_name: req.tenant?.settings?.agency_name || process.env.DEFAULT_AGENCY_NAME || 'Your Agency'
       };
       
       // Generate AI response

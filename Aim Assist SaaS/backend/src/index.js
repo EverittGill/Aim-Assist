@@ -68,6 +68,7 @@ app.use('/api/dev', require('./routes/frontend-status'));
 app.use('/webhook/twilio', require('./routes/webhooks/twilio'));
 app.use('/webhook/stripe', require('./routes/webhooks/stripe'));
 app.use('/webhook/fub', require('./routes/webhooks/fub'));
+app.use('/webhook/property', require('./routes/webhooks/property'));
 
 // Queue monitoring endpoint
 app.use('/api/queues', require('./routes/queues'));

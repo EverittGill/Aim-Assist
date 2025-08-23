@@ -116,7 +116,7 @@ class TenantPhoneService {
       const { data: existing } = await supabase
         .from('phone_numbers')
         .select('tenant_id')
-        .eq('phone_number', phoneNumber)
+        .eq('phone_number', this.normalizePhone(phoneNumber))
         .single();
 
       if (existing && existing.tenant_id !== tenantId) {
@@ -132,29 +132,56 @@ class TenantPhoneService {
       }
 
       // Insert or update phone assignment
-      const { data, error } = await supabase
-        .from('phone_numbers')
-        .upsert({
-          phone_number: this.normalizePhone(phoneNumber),
-          tenant_id: tenantId,
-          is_primary: isPrimary,
-          provider_sid: twilioSid,  // Changed from twilio_sid
-          capabilities: capabilities,
-          is_active: true,
-          purchased_at: new Date()
-        }, {
-          onConflict: 'phone_number'
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Clear cache for this phone
-      this.phoneCache.delete(this.normalizePhone(phoneNumber));
-
-      console.log(`✅ Phone ${phoneNumber} assigned to tenant ${tenantId}`);
-      return data;
+      const normalizedPhone = this.normalizePhone(phoneNumber);
+      
+      // If phone exists for this tenant, update it; otherwise insert
+      if (existing && existing.tenant_id === tenantId) {
+        // Update existing assignment
+        const { data, error } = await supabase
+          .from('phone_numbers')
+          .update({
+            is_primary: isPrimary,
+            provider_sid: twilioSid,
+            capabilities: capabilities,
+            is_active: true,
+            updated_at: new Date()
+          })
+          .eq('phone_number', normalizedPhone)
+          .eq('tenant_id', tenantId)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        
+        // Clear cache for this phone
+        this.phoneCache.delete(normalizedPhone);
+        
+        console.log(`✅ Updated phone ${phoneNumber} for tenant ${tenantId}`);
+        return data;
+      } else {
+        // Insert new assignment
+        const { data, error } = await supabase
+          .from('phone_numbers')
+          .insert({
+            phone_number: normalizedPhone,
+            tenant_id: tenantId,
+            is_primary: isPrimary,
+            provider_sid: twilioSid,
+            capabilities: capabilities,
+            is_active: true,
+            purchased_at: new Date()
+          })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        
+        // Clear cache for this phone
+        this.phoneCache.delete(normalizedPhone);
+        
+        console.log(`✅ Phone ${phoneNumber} assigned to tenant ${tenantId}`);
+        return data;
+      }
 
     } catch (error) {
       console.error('Error assigning phone to tenant:', error);
@@ -188,13 +215,11 @@ class TenantPhoneService {
    */
   async releasePhone(phoneNumber, tenantId) {
     try {
+      // Delete the phone assignment completely
       const { error } = await supabase
         .from('phone_numbers')
-        .update({
-          is_active: false,
-          released_at: new Date()
-        })
-        .eq('phone_number', phoneNumber)
+        .delete()
+        .eq('phone_number', this.normalizePhone(phoneNumber))
         .eq('tenant_id', tenantId);
 
       if (error) throw error;

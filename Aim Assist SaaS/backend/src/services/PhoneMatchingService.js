@@ -73,14 +73,35 @@ class PhoneMatchingService {
       if (crmLead) {
         console.log(`✅ Found lead in CRM: ${crmLead.crm_lead_id} - ${crmLead.first_name} ${crmLead.last_name}`);
         
-        // Step 3: Sync CRM lead to Supabase
-        const syncedLead = await this.syncLeadToSupabase(crmLead);
+        // Check if lead should sync based on tags
+        const TenantService = require('./TenantService');
+        const shouldSync = await TenantService.shouldSyncLead(this.tenantId, crmLead.tags || []);
         
-        return {
-          lead: syncedLead,
-          source: 'crm',
-          needsSync: false
-        };
+        if (shouldSync) {
+          // Step 3: Sync CRM lead to Supabase
+          const syncedLead = await this.syncLeadToSupabase(crmLead);
+          
+          return {
+            lead: syncedLead,
+            source: 'crm',
+            needsSync: false
+          };
+        } else {
+          console.log(`⏭️ Lead doesn't have required tags for sync. Tags: ${(crmLead.tags || []).join(', ')}`);
+          // Return CRM lead without syncing
+          return {
+            lead: {
+              crm_lead_id: crmLead.crm_lead_id || crmLead.id,
+              first_name: crmLead.first_name,
+              last_name: crmLead.last_name,
+              phone: crmLead.phone,
+              tags: crmLead.tags,
+              tenant_id: this.tenantId
+            },
+            source: 'crm_no_sync',
+            needsSync: false
+          };
+        }
       }
       
       // Step 4: Lead doesn't exist - create new one

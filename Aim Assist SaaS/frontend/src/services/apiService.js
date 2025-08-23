@@ -1,200 +1,170 @@
-import { authService } from './authService';
+/**
+ * API Service
+ * Handles all backend API communication with authentication
+ */
 
-class ApiService {
-  constructor() {
-    this.baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+import axios from 'axios';
+import { supabase } from '../config/supabase';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+
+// Create axios instance
+const apiService = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json'
   }
+});
 
-  async request(endpoint, options = {}) {
-    const url = `${this.baseUrl}${endpoint}`;
-    const config = {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...authService.getAuthHeaders(),
-        ...options.headers
-      }
-    };
-
+// Add auth token to requests
+apiService.interceptors.request.use(
+  async (config) => {
+    console.log('Making request to:', config.url);
+    
     try {
-      const response = await fetch(url, config);
+      // Get the session from localStorage directly to avoid circular dependency
+      const storageKey = 'aim-assist-auth';
+      const sessionString = localStorage.getItem(storageKey);
       
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Token expired or invalid
-          authService.logout();
-          window.location.href = '/login';
-          throw new Error('Authentication required');
-        }
+      if (sessionString) {
+        const sessionData = JSON.parse(sessionString);
+        console.log('Session data structure:', Object.keys(sessionData));
         
-        const error = await response.json();
-        throw new Error(error.message || `Request failed: ${response.status}`);
+        // Try different possible session locations
+        const session = sessionData?.currentSession || sessionData?.session || sessionData;
+        
+        // Look for access_token in various possible locations
+        const accessToken = session?.access_token || 
+                           session?.user?.access_token || 
+                           sessionData?.access_token;
+        
+        if (accessToken) {
+          console.log('Adding auth token from storage');
+          config.headers.Authorization = `Bearer ${accessToken}`;
+        } else {
+          console.log('No valid session in storage, data:', sessionData);
+        }
+      } else {
+        console.log('No session in localStorage');
       }
-
-      return await response.json();
-    } catch (error) {
-      console.error(`API request failed: ${endpoint}`, error);
-      throw error;
+    } catch (err) {
+      console.error('Error getting session from storage:', err);
     }
+    
+    console.log('Returning config, about to make actual request');
+    return config;
+  },
+  (error) => {
+    console.error('Request interceptor error:', error);
+    return Promise.reject(error);
   }
+);
 
+// Handle auth errors
+apiService.interceptors.response.use(
+  (response) => {
+    console.log('API Response:', response.config.url, response.status);
+    return response;
+  },
+  async (error) => {
+    console.error('API Error:', error.config?.url, error.response?.status, error.message);
+    const originalRequest = error.config;
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      try {
+        const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshError) throw refreshError;
+        
+        if (session) {
+          originalRequest.headers.Authorization = `Bearer ${session.access_token}`;
+          return apiService(originalRequest);
+        }
+      } catch (refreshError) {
+        // Redirect to login
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+// API methods
+const api = {
+  // Auth endpoints
+  auth: {
+    socialSignup: (data) => apiService.post('/auth/social-signup', data),
+    verifyToken: () => apiService.post('/auth/verify'),
+    refreshToken: () => apiService.post('/auth/refresh')
+  },
+  
   // Tenant endpoints
-  async getTenant(tenantId) {
-    return this.request(`/tenants/${tenantId}`);
-  }
-
-  async updateTenant(tenantId, data) {
-    return this.request(`/tenants/${tenantId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
-  }
-
-  async getTenantStats(tenantId) {
-    return this.request(`/tenants/${tenantId}/stats`);
-  }
-
+  tenants: {
+    getCurrent: () => {
+      console.log('Fetching current tenant from:', `${API_URL}/tenants/current`);
+      return apiService.get('/tenants/current');
+    },
+    create: (data) => apiService.post('/tenants', data),
+    createBrokerage: (data) => apiService.post('/tenants/brokerage', data),
+    createAgent: (brokerageId, data) => apiService.post(`/tenants/${brokerageId}/agents`, data),
+    update: (id, data) => apiService.put(`/tenants/${id}`, data),
+    getAgents: (brokerageId) => apiService.get(`/tenants/${brokerageId}/agents`),
+    joinBrokerage: (code) => apiService.post('/tenants/join', { code })
+  },
+  
   // Lead endpoints
-  async getLeads(tenantId, filters = {}) {
-    const params = new URLSearchParams(filters).toString();
-    return this.request(`/leads?tenant_id=${tenantId}${params ? `&${params}` : ''}`);
-  }
-
-  async getLead(leadId) {
-    return this.request(`/leads/${leadId}`);
-  }
-
-  async createLead(data) {
-    return this.request('/leads', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  }
-
-  async updateLead(leadId, data) {
-    return this.request(`/leads/${leadId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
-  }
-
-  async deleteLead(leadId) {
-    return this.request(`/leads/${leadId}`, {
-      method: 'DELETE'
-    });
-  }
-
+  leads: {
+    list: (params) => apiService.get('/leads', { params }),
+    get: (id) => apiService.get(`/leads/${id}`),
+    create: (data) => apiService.post('/leads', data),
+    update: (id, data) => apiService.put(`/leads/${id}`, data),
+    delete: (id) => apiService.delete(`/leads/${id}`),
+    updateAIStatus: (id, status) => apiService.put(`/leads/${id}/status`, { status })
+  },
+  
   // Conversation endpoints
-  async getConversation(leadId) {
-    return this.request(`/conversations/${leadId}`);
-  }
-
-  async sendMessage(data) {
-    return this.request('/messages/send', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  }
-
-  async generateAIMessage(data) {
-    return this.request('/ai/generate', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  }
-
-  // Automation endpoints
-  async getAutoTextRules(tenantId) {
-    return this.request(`/automation/rules?tenant_id=${tenantId}`);
-  }
-
-  async createAutoTextRule(data) {
-    return this.request('/automation/rules', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  }
-
-  async updateAutoTextRule(ruleId, data) {
-    return this.request(`/automation/rules/${ruleId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
-  }
-
-  async deleteAutoTextRule(ruleId) {
-    return this.request(`/automation/rules/${ruleId}`, {
-      method: 'DELETE'
-    });
-  }
-
-  // Template endpoints
-  async getTemplates(tenantId) {
-    return this.request(`/templates?tenant_id=${tenantId}`);
-  }
-
-  async saveTemplate(data) {
-    return this.request('/templates', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  }
-
-  async updateTemplate(templateId, data) {
-    return this.request(`/templates/${templateId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
-  }
-
-  async deleteTemplate(templateId) {
-    return this.request(`/templates/${templateId}`, {
-      method: 'DELETE'
-    });
-  }
-
+  conversations: {
+    getMessages: (leadId) => apiService.get(`/conversations/${leadId}`),
+    sendMessage: (leadId, content) => apiService.post('/conversations/send', { 
+      lead_id: leadId, 
+      content: content 
+    }),
+    generateAIResponse: (leadId, context) => apiService.post('/conversations/generate', { 
+      lead_id: leadId, 
+      ...context 
+    })
+  },
+  
   // Settings endpoints
-  async getSettings(tenantId) {
-    return this.request(`/settings/${tenantId}`);
-  }
-
-  async updateSettings(tenantId, settings) {
-    return this.request(`/settings/${tenantId}`, {
-      method: 'PUT',
-      body: JSON.stringify(settings)
-    });
-  }
-
+  settings: {
+    get: () => apiService.get('/settings'),
+    updateCompany: (data) => apiService.put('/settings/company', data),
+    updateAI: (data) => apiService.put('/settings/ai', data),
+    updateCampaigns: (data) => apiService.put('/settings/campaigns', data),
+    updatePrompts: (data) => apiService.put('/settings/prompts', data),
+    updatePhones: (data) => apiService.put('/settings/phones', data),
+    updateCRM: (data) => apiService.put('/settings/crm', data),
+    updateTags: (data) => apiService.put('/settings/tags', data)
+  },
+  
+  // Analytics endpoints
+  analytics: {
+    getOverview: (dateRange) => apiService.get('/analytics/overview', { params: dateRange }),
+    getFunnel: (dateRange) => apiService.get('/analytics/funnel', { params: dateRange }),
+    getReports: (type, params) => apiService.get(`/analytics/reports/${type}`, { params })
+  },
+  
   // Billing endpoints
-  async getBilling(tenantId) {
-    return this.request(`/billing/${tenantId}`);
+  billing: {
+    getSubscription: () => apiService.get('/billing/subscription'),
+    updateSubscription: (plan) => apiService.put('/billing/subscription', { plan }),
+    getUsage: () => apiService.get('/billing/usage'),
+    updatePaymentMethod: (token) => apiService.post('/billing/payment-method', { token })
   }
+};
 
-  async getUsage(tenantId) {
-    return this.request(`/billing/${tenantId}/usage`);
-  }
-
-  async updateSubscription(tenantId, planId) {
-    return this.request(`/billing/${tenantId}/subscription`, {
-      method: 'PUT',
-      body: JSON.stringify({ plan_id: planId })
-    });
-  }
-
-  // Webhook endpoints for CRM integration
-  async testCRMConnection(tenantId) {
-    return this.request(`/crm/test`, {
-      method: 'POST',
-      body: JSON.stringify({ tenant_id: tenantId })
-    });
-  }
-
-  async syncCRMData(tenantId) {
-    return this.request(`/crm/sync`, {
-      method: 'POST',
-      body: JSON.stringify({ tenant_id: tenantId })
-    });
-  }
-}
-
-export const apiService = new ApiService();
+export default api;

@@ -1,73 +1,94 @@
-import React, { useState, useEffect } from 'react';
-import Dashboard from './components/Dashboard';
-import LoginForm from './components/LoginForm';
-import { authService } from './services/authService';
-import { apiService } from './services/apiService';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import AuthCallback from './components/auth/AuthCallback';
+import Landing from './pages/Landing';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Dashboard from './pages/Dashboard';
+import ProfileCompletion from './pages/ProfileCompletion';
+import Settings from './pages/Settings';
+import Leads from './pages/Leads';
+import Conversation from './pages/Conversation';
+import Analytics from './pages/Analytics';
+import Billing from './pages/Billing';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
+import Support from './pages/Support';
 import './App.css';
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [tenant, setTenant] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const currentUser = await authService.getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
-        // Load tenant data
-        const tenantData = await apiService.getTenant(currentUser.tenant_id);
-        setTenant(tenantData);
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLogin = async (credentials) => {
-    try {
-      const { user, tenant } = await authService.login(credentials);
-      setUser(user);
-      setTenant(tenant);
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  };
-
-  const handleLogout = async () => {
-    await authService.logout();
-    setUser(null);
-    setTenant(null);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <LoginForm onLogin={handleLogin} />;
-  }
-
   return (
-    <Dashboard 
-      user={user} 
-      tenant={tenant}
-      onLogout={handleLogout}
-    />
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <div className="App min-h-screen bg-base-200">
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<Landing />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/support" element={<Support />} />
+              
+              {/* Protected routes */}
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/onboarding/complete-profile" element={
+                <ProtectedRoute requireProfile={false}>
+                  <ProfileCompletion />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/leads" element={
+                <ProtectedRoute>
+                  <Leads />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/conversation/:leadId" element={
+                <ProtectedRoute>
+                  <Conversation />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/analytics" element={
+                <ProtectedRoute>
+                  <Analytics />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/billing" element={
+                <ProtectedRoute>
+                  <Billing />
+                </ProtectedRoute>
+              } />
+              
+              {/* Catch all - redirect to landing */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

@@ -260,6 +260,14 @@ class QueueManager {
    * Add SMS job with standard delay
    */
   async queueSMS(data, priority = 1) {
+    console.log(`📨 Queueing SMS:`, {
+      tenantId: data.tenantId,
+      leadId: data.leadId,
+      to: data.to,
+      messagePreview: data.message ? data.message.substring(0, 30) + '...' : 'No message',
+      delay: data.delay !== undefined ? data.delay : 45000
+    });
+    
     return this.addJob('sms', data, {
       delay: data.delay !== undefined ? data.delay : 45000, // Default 45 second delay (0 is valid)
       priority,

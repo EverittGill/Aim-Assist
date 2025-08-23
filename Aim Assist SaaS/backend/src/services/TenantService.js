@@ -4,6 +4,7 @@
  * - Get tenant by ID or subdomain
  * - Update tenant settings
  * - Check subscription status
+ * - Support brokerage/agent hierarchy
  */
 
 const { supabase, withTenantContext } = require('../config/supabase');
@@ -353,6 +354,250 @@ class TenantService {
     } catch (error) {
       console.error('Error cancelling subscription:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Create a new brokerage tenant
+   */
+  static async createBrokerage(data) {
+    const { 
+      name, 
+      email, 
+      phone,
+      twilioPhone,
+      notificationPhone,
+      crmConfig,
+      leadTags = ['AI Ready', 'Auto Nurture']
+    } = data;
+    
+    try {
+      const tenantData = {
+        name,
+        email,
+        phone,
+        type: 'brokerage',
+        parent_tenant_id: null,
+        slug: name.toLowerCase().replace(/\s+/g, '-'),
+        subdomain: name.toLowerCase().replace(/\s+/g, '-'),
+        subscription_status: 'active',
+        subscription_plan: 'starter',
+        subscription_tier: 'trial',
+        trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        settings: {
+          twilio_phone: twilioPhone,
+          notification_phone: notificationPhone,
+          lead_sync_tags: leadTags,
+          crm_config: crmConfig,
+          features: {
+            ai_enabled: true,
+            nurturing_enabled: true,
+            property_alerts_enabled: true
+          }
+        },
+        status: 'active'
+      };
+
+      if (!supabase) {
+        console.log('Mock brokerage created:', tenantData);
+        return { ...tenantData, id: 'mock-brokerage-' + Date.now() };
+      }
+
+      const { data: tenant, error } = await supabase
+        .from('tenants')
+        .insert(tenantData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      console.log(`✅ Created brokerage tenant: ${tenant.id} - ${name}`);
+      return tenant;
+      
+    } catch (error) {
+      console.error('Error creating brokerage:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Create a sub-tenant (agent) under a brokerage
+   */
+  static async createAgent(brokerageId, data) {
+    const { 
+      name, 
+      email, 
+      phone,
+      notificationPhone 
+    } = data;
+    
+    try {
+      // Verify brokerage exists
+      const brokerage = await this.getById(brokerageId);
+      
+      if (!brokerage) {
+        throw new Error('Brokerage not found');
+      }
+      
+      const agentData = {
+        name,
+        email,
+        phone,
+        type: 'agent',
+        parent_tenant_id: brokerageId,
+        slug: name.toLowerCase().replace(/\s+/g, '-'),
+        subdomain: name.toLowerCase().replace(/\s+/g, '-'),
+        subscription_status: 'active', // Inherits from brokerage
+        subscription_plan: brokerage.subscription_plan,
+        subscription_tier: brokerage.subscription_tier || 'trial',
+        settings: {
+          notification_phone: notificationPhone,
+          // Inherit brokerage settings
+          twilio_phone: brokerage.settings.twilio_phone,
+          lead_sync_tags: brokerage.settings.lead_sync_tags,
+          crm_config: brokerage.settings.crm_config,
+          features: brokerage.settings.features
+        },
+        status: 'active'
+      };
+
+      if (!supabase) {
+        console.log('Mock agent created:', agentData);
+        return { ...agentData, id: 'mock-agent-' + Date.now() };
+      }
+
+      const { data: agent, error } = await supabase
+        .from('tenants')
+        .insert(agentData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      console.log(`✅ Created agent ${agent.id} under brokerage ${brokerageId}`);
+      return agent;
+      
+    } catch (error) {
+      console.error('Error creating agent:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get tenant configuration (handles hierarchy)
+   */
+  static async getTenantConfig(tenantId) {
+    try {
+      const tenant = await this.getById(tenantId);
+      
+      if (!tenant) {
+        throw new Error('Tenant not found');
+      }
+      
+      // If agent, merge with brokerage settings
+      if (tenant.type === 'agent' && tenant.parent_tenant_id) {
+        const brokerage = await this.getById(tenant.parent_tenant_id);
+        
+        if (brokerage) {
+          // Agent settings override brokerage defaults
+          tenant.settings = {
+            ...brokerage.settings,
+            ...tenant.settings,
+            notification_phone: tenant.settings.notification_phone // Keep agent's own notification
+          };
+        }
+      }
+      
+      return tenant;
+      
+    } catch (error) {
+      console.error('Error getting tenant config:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Check if a lead should sync to Supabase based on tags
+   */
+  static async shouldSyncLead(tenantId, leadTags = []) {
+    try {
+      const config = await this.getTenantConfig(tenantId);
+      const requiredTags = config.settings?.lead_sync_tags || [];
+      
+      if (requiredTags.length === 0) {
+        return true; // No tag filter, sync all
+      }
+      
+      // Check if lead has any required tag
+      const hasRequiredTag = requiredTags.some(tag => 
+        leadTags.some(leadTag => 
+          leadTag.toLowerCase() === tag.toLowerCase()
+        )
+      );
+      
+      console.log(`🏷️ Lead tags: ${leadTags.join(', ')}`);
+      console.log(`🏷️ Required tags: ${requiredTags.join(', ')}`);
+      console.log(`🏷️ Should sync: ${hasRequiredTag}`);
+      
+      return hasRequiredTag;
+      
+    } catch (error) {
+      console.error('Error checking lead sync eligibility:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Get all agents under a brokerage
+   */
+  static async getBrokerageAgents(brokerageId) {
+    try {
+      if (!supabase) {
+        return [];
+      }
+
+      const { data: agents } = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('parent_tenant_id', brokerageId)
+        .eq('type', 'agent')
+        .eq('status', 'active');
+      
+      return agents || [];
+      
+    } catch (error) {
+      console.error('Error getting brokerage agents:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * Get tenant by phone number (for incoming SMS routing)
+   */
+  static async getTenantByPhone(phoneNumber) {
+    try {
+      if (!supabase) {
+        return null;
+      }
+
+      // Normalize phone for comparison
+      const normalized = phoneNumber.replace(/\D/g, '');
+      
+      const { data: tenants } = await supabase
+        .from('tenants')
+        .select('*');
+      
+      // Search in settings JSON field
+      const tenant = tenants?.find(t => {
+        const twilioPhone = t.settings?.twilio_phone?.replace(/\D/g, '');
+        return twilioPhone && twilioPhone.includes(normalized);
+      });
+      
+      return tenant || null;
+      
+    } catch (error) {
+      console.error('Error finding tenant by phone:', error);
+      return null;
     }
   }
 }

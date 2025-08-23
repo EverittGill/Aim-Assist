@@ -26,8 +26,10 @@ class CRMFactory {
   static async getAdapter(tenantId) {
     try {
       // For MVP, use demo tenant credentials from env when Supabase isn't available
-      // or for the primary test tenant
-      if (tenantId === 'demo-tenant' || !supabase || tenantId === '7c563f31-36bd-4414-ad44-ef9c19c1c6b1') {
+      // or for the primary test tenant or Everitt's tenant
+      if (tenantId === 'demo-tenant' || !supabase || 
+          tenantId === '7c563f31-36bd-4414-ad44-ef9c19c1c6b1' ||
+          tenantId === 'e5669fe6-a161-4628-89e3-4b8e01f663b8') {
         console.log('Using FUB configuration from environment');
         const FollowUpBossAdapter = require('./adapters/FollowUpBossAdapter');
         
