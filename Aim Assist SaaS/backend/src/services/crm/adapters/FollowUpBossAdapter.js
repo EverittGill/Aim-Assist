@@ -112,15 +112,20 @@ class FollowUpBossAdapter extends CRMAdapter {
   }
 
   /**
-   * Get single lead by ID
+   * Get single lead by ID with ALL fields
    */
-  async getLead(leadId) {
+  async getLead(leadId, options = {}) {
+    const { includeAllFields = true } = options;
+    
     try {
+      const params = includeAllFields ? { fields: 'allFields' } : {};
+      
       const response = await axios.get(`${this.baseUrl}/people/${leadId}`, {
-        headers: this.getHeaders()
+        headers: this.getHeaders(),
+        params
       });
       
-      return this.mapFUBToStandard(response.data);
+      return this.mapFUBToStandardComplete(response.data);
     } catch (error) {
       console.error('Error fetching FUB lead:', error.message);
       throw error;
@@ -322,7 +327,7 @@ class FollowUpBossAdapter extends CRMAdapter {
   }
 
   /**
-   * Map FUB lead to standard schema
+   * Map FUB lead to standard schema (basic)
    */
   mapFUBToStandard(fubLead) {
     const phone = fubLead.phones?.find(p => p.isPrimary)?.value || 
@@ -346,6 +351,143 @@ class FollowUpBossAdapter extends CRMAdapter {
       notes: fubLead.background,
       custom_fields: fubLead.customFields || [],
       crm_data: fubLead
+    };
+  }
+
+  /**
+   * Map FUB lead to standard schema with ALL fields for complete sync
+   */
+  mapFUBToStandardComplete(fubLead) {
+    // Get primary contacts
+    const primaryPhone = fubLead.phones?.find(p => p.isPrimary) || fubLead.phones?.[0];
+    const primaryEmail = fubLead.emails?.find(e => e.isPrimary) || fubLead.emails?.[0];
+    
+    // Extract all custom fields into a clean object
+    const customFields = {};
+    Object.keys(fubLead).forEach(key => {
+      if (key.startsWith('custom')) {
+        customFields[key.substring(6)] = fubLead[key]; // Remove 'custom' prefix
+      }
+    });
+    
+    return {
+      // Basic identification
+      fub_lead_id: fubLead.id?.toString(),
+      first_name: fubLead.firstName,
+      last_name: fubLead.lastName,
+      
+      // Contact information (complete arrays)
+      phone: this.normalizePhone(primaryPhone?.value),
+      email: primaryEmail?.value,
+      phones: fubLead.phones || [],
+      emails: fubLead.emails || [],
+      addresses: fubLead.addresses || [],
+      
+      // Lead management
+      stage: fubLead.stage,
+      stage_id: fubLead.stageId,
+      source: fubLead.source,
+      source_url: fubLead.sourceUrl,
+      source_details: fubLead.sourceDetails || {},
+      score: fubLead.score,
+      temperature: fubLead.temperature,
+      tags: fubLead.tags?.map(t => typeof t === 'string' ? t : t.name) || [],
+      
+      // Assignment
+      // assigned_agent_id is UUID in our DB but FUB uses integer, so don't map it directly
+      // assigned_agent_id: null, // Would need mapping table from FUB user ID to our agent UUID
+      assigned_user_name: fubLead.assignedTo,
+      assigned_lender_id: fubLead.assignedLenderId,
+      assigned_lender_name: fubLead.assignedLenderName,
+      collaborators: fubLead.collaborators || [],
+      team_leaders: fubLead.teamLeaders || [],
+      
+      // Activity timestamps
+      last_activity: fubLead.lastActivity,
+      last_activity_at: fubLead.lastActivity, // Keep both for compatibility
+      last_inbound_at: fubLead.lastInboundActivity,
+      last_outbound_at: fubLead.lastOutboundActivity,
+      last_communication: fubLead.lastCommunication,
+      contacted_at: fubLead.contacted && fubLead.contacted !== 0 ? fubLead.contacted : null,
+      replied_at: fubLead.replied && fubLead.replied !== 0 ? fubLead.replied : null,
+      
+      // Email activity
+      last_received_email: fubLead.lastReceivedEmail,
+      last_sent_email: fubLead.lastSentEmail,
+      last_email: fubLead.lastEmail,
+      emails_received: fubLead.emailsReceived || 0,
+      emails_sent: fubLead.emailsSent || 0,
+      
+      // Call activity
+      last_incoming_call: fubLead.lastIncomingCall,
+      last_outgoing_call: fubLead.lastOutgoingCall,
+      last_call: fubLead.lastCall,
+      calls_incoming: fubLead.callsIncoming || 0,
+      calls_outgoing: fubLead.callsOutgoing || 0,
+      calls_duration: fubLead.callsDuration || 0,
+      
+      // Text activity
+      last_received_text: fubLead.lastReceivedText,
+      last_sent_text: fubLead.lastSentText,
+      last_text: fubLead.lastText,
+      texts_received: fubLead.textsReceived || 0,
+      texts_sent: fubLead.textsSent || 0,
+      
+      // Property activity
+      properties_viewed: fubLead.propertiesViewed || 0,
+      properties_saved: fubLead.propertiesSaved || 0,
+      pages_viewed: fubLead.pagesViewed || 0,
+      website_visits: fubLead.websiteVisits || 0,
+      last_idx_visit: fubLead.lastIdxVisit,
+      
+      // Deal information
+      deal_status: fubLead.dealStatus,
+      deal_stage: fubLead.dealStage,
+      deal_name: fubLead.dealName,
+      deal_close_date: fubLead.dealCloseDate,
+      deal_price: fubLead.dealPrice,
+      
+      // Tasks
+      next_task: fubLead.nextTask,
+      next_task_has_time: fubLead.nextTaskHasTime,
+      next_task_name: fubLead.nextTaskName,
+      
+      // Timeframe
+      timeframe_id: fubLead.timeframeId,
+      timeframe_status: fubLead.timeframeStatus,
+      timeframe_date_range: fubLead.timeframeDateRange,
+      timeframe_updated: fubLead.timeframeUpdated,
+      
+      // Profile data
+      picture: fubLead.picture,
+      social_data: fubLead.socialData,
+      background: fubLead.background,
+      relationships: fubLead.relationships || [],
+      
+      // System fields
+      created_via: fubLead.createdVia,
+      created_by_id: fubLead.createdById,
+      updated_by_id: fubLead.updatedById,
+      lead_flow_id: fubLead.leadFlowId,
+      source_id: fubLead.sourceId,
+      assigned_pond_id: fubLead.assignedPondId,
+      claimed: fubLead.claimed,
+      delayed: fubLead.delayed,
+      
+      // Custom fields (merged with our custom_data)
+      custom_data: {
+        ...customFields,
+        fubCustomFields: fubLead.customFields || []
+      },
+      
+      // Store complete FUB response
+      fub_data: fubLead,
+      
+      // Metadata
+      // Don't override Supabase's created_at/updated_at, they're auto-managed
+      // created_at: fubLead.created,
+      // updated_at: fubLead.updated,
+      last_fub_sync: new Date().toISOString()
     };
   }
 
