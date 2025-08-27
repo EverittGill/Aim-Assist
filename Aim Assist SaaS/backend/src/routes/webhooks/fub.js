@@ -38,27 +38,27 @@ router.post('/', async (req, res) => {
 async function processWebhook(event, data) {
   // Determine tenant from webhook data or headers
   // For now, use demo tenant
-  const tenantId = '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+  const organizationId = '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
   
   switch (event) {
     case 'person.created':
       console.log(`👤 New lead created in FUB: ${data.name} (ID: ${data.id})`);
-      await handleLeadCreated(tenantId, data);
+      await handleLeadCreated(organizationId, data);
       break;
       
     case 'person.updated':
       console.log(`📝 Lead updated in FUB: ${data.name} (ID: ${data.id})`);
-      await handleLeadUpdated(tenantId, data);
+      await handleLeadUpdated(organizationId, data);
       break;
       
     case 'person.deleted':
       console.log(`🗑️ Lead deleted in FUB: ${data.id}`);
-      await handleLeadDeleted(tenantId, data);
+      await handleLeadDeleted(organizationId, data);
       break;
       
     case 'textMessage.created':
       console.log(`💬 New text message in FUB from lead ${data.personId}`);
-      await handleTextMessage(tenantId, data);
+      await handleTextMessage(organizationId, data);
       break;
       
     case 'note.created':
@@ -68,7 +68,7 @@ async function processWebhook(event, data) {
       
     case 'tag.added':
       console.log(`🏷️ Tag added to lead ${data.personId}: ${data.tag}`);
-      await handleTagAdded(tenantId, data);
+      await handleTagAdded(organizationId, data);
       break;
       
     default:
@@ -79,11 +79,11 @@ async function processWebhook(event, data) {
 /**
  * Handle new lead created in FUB
  */
-async function handleLeadCreated(tenantId, leadData) {
+async function handleLeadCreated(organizationId, leadData) {
   try {
     // Queue sync for this specific lead
     await QueueManager.addJob('lead-sync', {
-      tenantId,
+      organizationId,
       syncType: 'single',
       leadId: leadData.id
     });
@@ -91,7 +91,7 @@ async function handleLeadCreated(tenantId, leadData) {
     // Check if lead should be added to auto-text
     if (shouldAutoText(leadData)) {
       await QueueManager.queueAutoText({
-        tenantId,
+        organizationId,
         leadId: leadData.id,
         trigger: 'new_lead'
       }, 1); // 1 minute delay
@@ -104,11 +104,11 @@ async function handleLeadCreated(tenantId, leadData) {
 /**
  * Handle lead updated in FUB
  */
-async function handleLeadUpdated(tenantId, leadData) {
+async function handleLeadUpdated(organizationId, leadData) {
   try {
     // Queue sync for this specific lead
     await QueueManager.addJob('lead-sync', {
-      tenantId,
+      organizationId,
       syncType: 'single',
       leadId: leadData.id
     });
@@ -125,7 +125,7 @@ async function handleLeadUpdated(tenantId, leadData) {
 /**
  * Handle lead deleted in FUB
  */
-async function handleLeadDeleted(tenantId, leadData) {
+async function handleLeadDeleted(organizationId, leadData) {
   try {
     // Mark lead as deleted in our database
     const { supabase } = require('../../config/supabase');
@@ -138,7 +138,7 @@ async function handleLeadDeleted(tenantId, leadData) {
           sync_status: 'deleted',
           updated_at: new Date()
         })
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .eq('crm_lead_id', leadData.id.toString());
     }
   } catch (error) {
@@ -149,12 +149,12 @@ async function handleLeadDeleted(tenantId, leadData) {
 /**
  * Handle new text message from FUB
  */
-async function handleTextMessage(tenantId, messageData) {
+async function handleTextMessage(organizationId, messageData) {
   try {
     // Could trigger extraction if message contains important info
     if (messageData.message && messageData.personId) {
       await QueueManager.queueExtraction({
-        tenantId,
+        organizationId,
         leadId: messageData.personId,
         currentMessage: messageData.message,
         trigger: 'fub_webhook',
@@ -172,11 +172,11 @@ async function handleTextMessage(tenantId, messageData) {
 /**
  * Handle tag added to lead
  */
-async function handleTagAdded(tenantId, tagData) {
+async function handleTagAdded(organizationId, tagData) {
   try {
     // Sync lead to update tags
     await QueueManager.addJob('lead-sync', {
-      tenantId,
+      organizationId,
       syncType: 'single',
       leadId: tagData.personId
     });
@@ -186,7 +186,7 @@ async function handleTagAdded(tenantId, tagData) {
     if (autoTextTags.includes(tagData.tag)) {
       console.log(`🚀 Auto-text triggered by tag: ${tagData.tag}`);
       await QueueManager.queueAutoText({
-        tenantId,
+        organizationId,
         leadId: tagData.personId,
         trigger: 'tag_added',
         tag: tagData.tag

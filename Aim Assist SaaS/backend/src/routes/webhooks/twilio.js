@@ -107,17 +107,17 @@ async function processIncomingSMS(data) {
   
   try {
     // Determine tenant from phone number
-    const tenantId = await getTenantFromPhone(toPhone);
+    const organizationId = await getTenantFromPhone(toPhone);
     
-    if (!tenantId) {
+    if (!organizationId) {
       console.error(`No tenant found for phone ${toPhone}`);
       return;
     }
     
-    console.log(`🏢 Using tenant: ${tenantId}`);
+    console.log(`🏢 Using tenant: ${organizationId}`);
     
     // Use PhoneMatchingService to find or create lead
-    const phoneService = new PhoneMatchingService(tenantId);
+    const phoneService = new PhoneMatchingService(organizationId);
     const result = await phoneService.findOrCreateLeadByPhone(fromPhone);
     
     if (!result || !result.lead) {
@@ -133,7 +133,7 @@ async function processIncomingSMS(data) {
     // If we need to sync, get latest from CRM first
     if (needsSync) {
       console.log('🔄 Syncing lead data from CRM...');
-      const adapter = await CRMFactory.getAdapter(tenantId);
+      const adapter = await CRMFactory.getAdapter(organizationId);
       const crmLead = await adapter.getLead(leadId);
       if (crmLead) {
         await phoneService.syncLeadToSupabase(crmLead);
@@ -141,7 +141,7 @@ async function processIncomingSMS(data) {
     }
     
     // Process the message
-    await processLeadMessage(tenantId, leadId, messageContent, twilioSid, { fromPhone, toPhone });
+    await processLeadMessage(organizationId, leadId, messageContent, twilioSid, { fromPhone, toPhone });
     
   } catch (error) {
     console.error('Error processing SMS:', error);
@@ -151,9 +151,9 @@ async function processIncomingSMS(data) {
 /**
  * Process message from known lead
  */
-async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, phoneData = {}) {
+async function processLeadMessage(organizationId, leadId, messageContent, twilioSid, phoneData = {}) {
   try {
-    console.log(`💬 Processing message for lead ${leadId} in tenant ${tenantId}`);
+    console.log(`💬 Processing message for lead ${leadId} in tenant ${organizationId}`);
     
     // First, ensure the lead exists in our database
     const { supabase } = require('../../config/supabase');
@@ -163,7 +163,7 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
       const { data: existingLead, error: checkError } = await supabase
         .from('leads')
         .select('id')
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .eq('crm_lead_id', leadId)
         .single();
       
@@ -171,14 +171,14 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
         console.log(`📝 Creating lead ${leadId} in database...`);
         
         // Get lead details from CRM
-        const adapter = await CRMFactory.getAdapter(tenantId);
+        const adapter = await CRMFactory.getAdapter(organizationId);
         const crmLead = await adapter.getLead(leadId);
         
         // Create lead in database
         const { data: newLead, error: createError } = await supabase
           .from('leads')
           .insert({
-            organization_id: tenantId,
+            organization_id: organizationId,
             crm_lead_id: leadId,
             crm_type: 'followupboss',
             first_name: crmLead.first_name || 'Unknown',
@@ -203,7 +203,7 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
       }
     }
     
-    const conversationService = new ConversationService(tenantId);
+    const conversationService = new ConversationService(organizationId);
     
     // Get or create conversation FIRST (needed for message storage)
     const conversation = await conversationService.getOrCreateConversation(leadId);
@@ -217,10 +217,10 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
     let enrichedContext = {};
     try {
       console.log(`🔄 Syncing and enriching context for lead ${leadId}...`);
-      const syncService = new ConversationSyncService(tenantId);
+      const syncService = new ConversationSyncService(organizationId);
       await syncService.syncConversationBeforeAI(leadId);
       
-      const contextService = new ContextEnrichmentService(tenantId);
+      const contextService = new ContextEnrichmentService(organizationId);
       enrichedContext = await contextService.getEnrichedContext(leadId);
       console.log(`✅ Context enrichment successful`);
     } catch (enrichError) {
@@ -235,7 +235,7 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
       const { data: dbLead } = await supabase
         .from('leads')
         .select('id')
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .eq('crm_lead_id', leadId)
         .single();
       
@@ -243,7 +243,7 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
         const { data: lastExtraction } = await supabase
           .from('extraction_logs')
           .select('*')
-          .eq('organization_id', tenantId)
+          .eq('organization_id', organizationId)
           .eq('lead_id', dbLead.id)  // Use Supabase UUID
           .order('created_at', { ascending: false })
           .limit(1)
@@ -274,7 +274,7 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
     
     // Log message to FUB for native conversation tracking
     try {
-      const adapter = await CRMFactory.getAdapter(tenantId);
+      const adapter = await CRMFactory.getAdapter(organizationId);
       const fromPhone = phoneData.fromPhone || '+17068184445'; // Use actual from phone
       const toPhone = phoneData.toPhone || '+18662981158';
       
@@ -296,7 +296,7 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
     
     // Queue extraction job with enriched context
     await queueManager.queueExtraction({
-      tenantId,
+      organizationId,
       leadId,
       conversationId: conversation.id,
       currentMessage: messageContent,
@@ -315,8 +315,8 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
     console.log(`🤖 AI should respond: ${shouldRespond} (ai_enabled: ${conversation.ai_enabled}, status: ${conversation.status})`);
     
     if (shouldRespond) {
-      console.log(`🚀 Generating AI response for lead ${leadId} in tenant ${tenantId}`);
-      await generateAndQueueAIResponse(tenantId, leadId, conversation.id, messageContent, enrichedContext);
+      console.log(`🚀 Generating AI response for lead ${leadId} in tenant ${organizationId}`);
+      await generateAndQueueAIResponse(organizationId, leadId, conversation.id, messageContent, enrichedContext);
     } else {
       console.log(`⏸️ AI not responding (ai_enabled: ${conversation.ai_enabled}, status: ${conversation.status})`);
     }
@@ -329,19 +329,19 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
 /**
  * Generate and queue AI response with Claude
  */
-async function generateAndQueueAIResponse(tenantId, leadId, conversationId, currentMessage, enrichedContext) {
+async function generateAndQueueAIResponse(organizationId, leadId, conversationId, currentMessage, enrichedContext) {
   console.log(`\n🔄 generateAndQueueAIResponse called:`, {
-    tenantId,
+    organizationId,
     leadId,
     conversationId,
     messagePreview: currentMessage.substring(0, 50)
   });
   
   try {
-    const conversationService = new ConversationService(tenantId);
+    const conversationService = new ConversationService(organizationId);
     const ClaudeService = require('../../services/ai/ClaudeService');
-    const claudeService = new ClaudeService(tenantId);
-    console.log(`✅ Claude service initialized for tenant ${tenantId}`);
+    const claudeService = new ClaudeService(organizationId);
+    console.log(`✅ Claude service initialized for tenant ${organizationId}`);
     
     // Get full conversation from Supabase (already synced in processLeadMessage)
     console.log(`📖 Getting conversation history for lead ${leadId}...`);
@@ -356,7 +356,7 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
     let { data: lead, error: leadError } = await supabase
       .from('leads')
       .select('*')
-      .eq('organization_id', tenantId)
+      .eq('organization_id', organizationId)
       .eq('crm_lead_id', leadId)
       .single();
     
@@ -365,7 +365,7 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
       const result = await supabase
         .from('leads')
         .select('*')
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .eq('id', leadId)
         .single();
       lead = result.data;
@@ -377,7 +377,7 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
     if (leadError || !lead) {
       console.error('Lead not found in Supabase:', leadError);
       // Fallback to CRM if needed
-      const adapter = await CRMFactory.getAdapter(tenantId);
+      const adapter = await CRMFactory.getAdapter(organizationId);
       const crmLead = await adapter.getLead(leadId);
       return crmLead;
     }
@@ -452,7 +452,7 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
       
       // Queue SMS for sending
       await queueManager.queueSMS({
-        tenantId,
+        organizationId,
         leadId,
         to: leadPhone,
         message: messageText,
@@ -480,7 +480,7 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
         // Send notification to agent
         // Get tenant's notification phone from configuration
         const TenantService = require('../../services/TenantService');
-        const tenantConfig = await TenantService.getTenantConfig(tenantId);
+        const tenantConfig = await TenantService.getTenantConfig(organizationId);
         const notificationPhone = tenantConfig.settings?.notification_phone || process.env.USER_NOTIFICATION_PHONE;
         
         if (notificationPhone) {
@@ -488,7 +488,7 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
           const fubLeadUrl = `https://app.followupboss.com/2/people/view/${leadId}`;
           
           await queueManager.queueSMS({
-            tenantId,
+            organizationId,
             leadId: null, // System message
             to: notificationPhone,
             message: `🎯 QUALIFIED LEAD: ${lead.first_name || 'Lead'} ${lead.last_name || ''} (${leadPhone})\nReason: ${response.qualification?.escalationReason || 'Qualified'}\nScore: ${response.qualification?.qualificationScore || 0}%\n\nView in FUB: ${fubLeadUrl}`,
@@ -564,17 +564,17 @@ router.post('/status', validateTwilioSignature, async (req, res) => {
  */
 async function getTenantFromPhone(phoneNumber) {
   // Use TenantPhoneService for proper multi-tenant routing
-  const tenantId = await TenantPhoneService.getTenantFromPhone(phoneNumber);
+  const organizationId = await TenantPhoneService.getTenantFromPhone(phoneNumber);
   
-  if (!tenantId) {
+  if (!organizationId) {
     console.error(`❌ No tenant found for phone ${phoneNumber}`);
     console.error('This phone number must be registered to a tenant in the phone_numbers table');
     // In multi-tenant system, we MUST reject messages to unregistered numbers
     return null;
   }
   
-  console.log(`✅ Found tenant ${tenantId} for phone ${phoneNumber}`);
-  return tenantId;
+  console.log(`✅ Found tenant ${organizationId} for phone ${phoneNumber}`);
+  return organizationId;
 }
 
 /**
