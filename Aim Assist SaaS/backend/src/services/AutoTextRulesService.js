@@ -96,7 +96,7 @@ class AutoTextRulesService {
     const { data, error } = await supabase
       .from('auto_text_rules')
       .select('*')
-      .eq('organization_id', tenantId)
+      .eq('organization_id', organizationId)
       .eq('is_active', true)
       .order('priority', { ascending: true }); // Lower priority number = higher priority
     
@@ -171,7 +171,7 @@ class AutoTextRulesService {
   /**
    * Apply a rule to a lead (queue the auto-text)
    */
-  static async applyRule(tenantId, lead, rule) {
+  static async applyRule(organizationId, lead, rule) {
     // Calculate delay considering business hours
     const delay = this.calculateDelay(rule);
     
@@ -183,7 +183,7 @@ class AutoTextRulesService {
     
     // Queue the auto-text
     await QueueManager.queueAutoText({
-      tenantId,
+      organizationId,
       leadId: lead.crm_lead_id,
       ruleId: rule.id,
       message,
@@ -195,7 +195,7 @@ class AutoTextRulesService {
       await supabase
         .from('auto_text_applications')
         .insert({
-          organization_id: tenantId,
+          organization_id: organizationId,
           lead_id: lead.id,
           rule_id: rule.id,
           scheduled_at: new Date(Date.now() + delay),
@@ -316,7 +316,7 @@ class AutoTextRulesService {
         updated_at: new Date()
       })
       .eq('id', leadId)
-      .eq('organization_id', tenantId);
+      .eq('organization_id', organizationId);
     
     console.log(`🤖 AI enabled for lead ${leadId}`);
   }
@@ -369,7 +369,7 @@ class AutoTextRulesService {
     const { data, error } = await supabase
       .from('auto_text_rules')
       .select('*')
-      .eq('organization_id', tenantId)
+      .eq('organization_id', organizationId)
       .order('priority', { ascending: true });
     
     if (error) {

@@ -8,8 +8,9 @@ const { supabase } = require('../config/supabase');
 const CRMFactory = require('./crm/CRMFactory');
 
 class ConversationSyncService {
-  constructor(tenantId) {
-    this.tenantId = tenantId;
+  constructor(organizationId) {
+    this.organizationId = organizationId;
+    this.tenantId = organizationId; // Keep for backward compatibility
   }
 
   /**
@@ -21,7 +22,7 @@ class ConversationSyncService {
     
     try {
       // Get CRM adapter
-      const adapter = await CRMFactory.getAdapter(this.tenantId);
+      const adapter = await CRMFactory.getAdapter(this.organizationId);
       
       // Fetch ALL messages from CRM (including human agent messages)
       const crmMessages = await adapter.getConversationHistory(leadId, {
@@ -39,13 +40,13 @@ class ConversationSyncService {
       const { data: dbLead } = await supabase
         .from('leads')
         .select('id')
-        .eq('organization_id', this.tenantId)
+        .eq('organization_id', this.organizationId)
         .eq('crm_lead_id', leadId)
         .single();
       
       const dbLeadId = dbLead?.id;
       if (!dbLeadId) {
-        console.error(`Lead ${leadId} not found in Supabase for tenant ${this.tenantId}`);
+        console.error(`Lead ${leadId} not found in Supabase for organization ${this.organizationId}`);
         return { messages: [], hasHumanActivity: false };
       }
       
@@ -53,7 +54,7 @@ class ConversationSyncService {
       const { data: existingMessages, error } = await supabase
         .from('messages')
         .select('external_id, crm_message_id')
-        .eq('organization_id', this.tenantId)
+        .eq('organization_id', this.organizationId)
         .eq('lead_id', dbLeadId);
       
       if (error) {
@@ -87,7 +88,7 @@ class ConversationSyncService {
       // Store new messages in Supabase
       if (newMessages.length > 0) {
         const messagesToInsert = newMessages.map(msg => ({
-          organization_id: this.tenantId,
+          organization_id: this.organizationId,
           lead_id: dbLeadId,
           crm_message_id: msg.id,
           external_id: msg.external_id,
@@ -119,7 +120,7 @@ class ConversationSyncService {
       const { data: supabaseMessages } = await supabase
         .from('messages')
         .select('*')
-        .eq('organization_id', this.tenantId)
+        .eq('organization_id', this.organizationId)
         .eq('lead_id', dbLeadId)
         .order('created_at', { ascending: true });
       
@@ -140,7 +141,7 @@ class ConversationSyncService {
    */
   async checkHumanEngagement(leadId) {
     try {
-      const adapter = await CRMFactory.getAdapter(this.tenantId);
+      const adapter = await CRMFactory.getAdapter(this.organizationId);
       
       // Get recent messages
       const messages = await adapter.getConversationHistory(leadId, { limit: 20 });
@@ -184,7 +185,7 @@ class ConversationSyncService {
       const { data: savedMessage, error } = await supabase
         .from('messages')
         .insert({
-          organization_id: this.tenantId,
+          organization_id: this.organizationId,
           lead_id: leadId,
           direction: 'outbound',
           sender_type: message.sender_type || 'ai',
@@ -200,7 +201,7 @@ class ConversationSyncService {
       }
       
       // Then log to CRM for visibility
-      const adapter = await CRMFactory.getAdapter(this.tenantId);
+      const adapter = await CRMFactory.getAdapter(this.organizationId);
       const logged = await adapter.logMessage(leadId, {
         direction: 'outbound',
         content: message.content,
@@ -238,7 +239,7 @@ class ConversationSyncService {
     const { data: messages, error } = await supabase
       .from('messages')
       .select('*')
-      .eq('organization_id', this.tenantId)
+      .eq('organization_id', this.organizationId)
       .eq('lead_id', leadId)
       .order('created_at', { ascending: false })
       .limit(100);

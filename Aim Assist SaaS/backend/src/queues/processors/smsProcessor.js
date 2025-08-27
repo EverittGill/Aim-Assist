@@ -13,7 +13,8 @@ const CRMFactory = require('../../services/crm/CRMFactory');
 
 module.exports = async function processSMS(job) {
   const {
-    tenantId,
+    organizationId,
+    tenantId, // Keep for backward compatibility
     leadId,
     to,
     message,
@@ -21,8 +22,11 @@ module.exports = async function processSMS(job) {
     messageId
   } = job.data;
   
+  // Use organizationId, fall back to tenantId for compatibility
+  const orgId = organizationId || tenantId;
+  
   console.log(`\n📱 Processing SMS job ${job.id}:`, {
-    tenantId,
+    organizationId: orgId,
     leadId,
     to,
     messagePreview: message ? message.substring(0, 50) : 'No message',
@@ -30,22 +34,22 @@ module.exports = async function processSMS(job) {
   });
   
   try {
-    // Create Twilio service for tenant
-    const twilioService = new TwilioService(tenantId);
+    // Create Twilio service for organization
+    const twilioService = new TwilioService(orgId);
     
     // Send the SMS
     const result = await twilioService.sendSMS(to, message);
     
     // Log outbound message to FUB for native conversation tracking
-    if (leadId && tenantId) {
+    if (leadId && orgId) {
       try {
-        const adapter = await CRMFactory.getAdapter(tenantId);
+        const adapter = await CRMFactory.getAdapter(orgId);
         // Get the actual phone number used by Twilio service
         const TenantPhoneService = require('../../services/TenantPhoneService');
-        const fromPhone = await TenantPhoneService.getTenantPrimaryPhone(tenantId) || 
+        const fromPhone = await TenantPhoneService.getTenantPrimaryPhone(orgId) || 
                          process.env.TWILIO_FROM_NUMBER || '+18662981158';
         
-        console.log(`📞 Using from phone: ${fromPhone} for tenant ${tenantId}`);
+        console.log(`📞 Using from phone: ${fromPhone} for organization ${orgId}`);
         
         const logged = await adapter.logMessage(leadId, {
           direction: 'outbound',
@@ -86,7 +90,7 @@ module.exports = async function processSMS(job) {
     
     // Record usage for billing (optional)
     try {
-      await TenantService.recordUsage(tenantId, 'sms_sent', 1, {
+      await TenantService.recordUsage(orgId, 'sms_sent', 1, {
         lead_id: leadId,
         message_id: messageId
       });

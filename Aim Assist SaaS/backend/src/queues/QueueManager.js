@@ -278,16 +278,23 @@ class QueueManager {
    * Add SMS job with standard delay
    */
   async queueSMS(data, priority = 1) {
+    // Map tenantId to organizationId for database compatibility
+    const mappedData = {
+      ...data,
+      organizationId: data.organizationId || data.tenantId,
+      tenantId: undefined // Remove to avoid confusion
+    };
+    
     console.log(`📨 Queueing SMS:`, {
-      tenantId: data.tenantId,
-      leadId: data.leadId,
-      to: data.to,
-      messagePreview: data.message ? data.message.substring(0, 30) + '...' : 'No message',
-      delay: data.delay !== undefined ? data.delay : 45000
+      organizationId: mappedData.organizationId,
+      leadId: mappedData.leadId,
+      to: mappedData.to,
+      messagePreview: mappedData.message ? mappedData.message.substring(0, 30) + '...' : 'No message',
+      delay: mappedData.delay !== undefined ? mappedData.delay : 45000
     });
     
-    return this.addJob('sms', data, {
-      delay: data.delay !== undefined ? data.delay : 45000, // Default 45 second delay (0 is valid)
+    return this.addJob('sms', mappedData, {
+      delay: mappedData.delay !== undefined ? mappedData.delay : 45000, // Default 45 second delay (0 is valid)
       priority,
       attempts: 3
     });
@@ -297,7 +304,14 @@ class QueueManager {
    * Add auto-text job
    */
   async queueAutoText(data, delayMinutes = 1) {
-    return this.addJob('auto-text', data, {
+    // Map tenantId to organizationId for database compatibility
+    const mappedData = {
+      ...data,
+      organizationId: data.organizationId || data.tenantId,
+      tenantId: undefined // Remove to avoid confusion
+    };
+    
+    return this.addJob('auto-text', mappedData, {
       delay: delayMinutes * 60 * 1000,
       priority: 2
     });

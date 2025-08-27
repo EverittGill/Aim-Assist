@@ -10,8 +10,10 @@ const AutoTextRulesService = require('./AutoTextRulesService');
 const QueueManager = require('../queues/QueueManager').default;
 
 class TagPollingService {
-  constructor(tenantId) {
-    this.tenantId = tenantId;
+  constructor(organizationId) {
+    // Support both parameter names during transition
+    this.organizationId = organizationId;
+    this.tenantId = organizationId; // Keep for backward compatibility
     this.pollStats = {
       fetched: 0,
       new: 0,
@@ -34,11 +36,11 @@ class TagPollingService {
       sinceMinutesAgo = 60 // Default: check leads from last hour
     } = options;
 
-    console.log(`🏷️  Polling for leads with tag: ${tagName} (tenant: ${this.tenantId})`);
+    console.log(`🏷️  Polling for leads with tag: ${tagName} (organization: ${this.organizationId})`);
     
     try {
       // Get CRM adapter
-      const adapter = await CRMFactory.getAdapter(this.tenantId);
+      const adapter = await CRMFactory.getAdapter(this.organizationId);
       
       // Get last poll timestamp for this tag
       const lastPollTime = await this.getLastPollTime(tagName);

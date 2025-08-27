@@ -50,8 +50,9 @@ const authenticateRequest = async (req, res, next) => {
   try {
     // In development, allow requests without auth
     if (process.env.NODE_ENV === 'development') {
-      // Try to get tenant from headers or use default
-      req.tenantId = req.headers['x-tenant-id'] || 1;
+      // Try to get organization from headers or use default
+      req.organizationId = req.headers['x-organization-id'] || req.headers['x-tenant-id'] || 1;
+      req.tenantId = req.organizationId; // Keep for backward compatibility
       
       const authHeader = req.headers.authorization;
       const token = authHeader && authHeader.split(' ')[1];
@@ -81,7 +82,8 @@ const authenticateRequest = async (req, res, next) => {
     }
 
     req.user = user;
-    req.tenantId = req.headers['x-tenant-id'] || user.user_metadata?.tenant_id || 1;
+    req.organizationId = req.headers['x-organization-id'] || req.headers['x-tenant-id'] || user.user_metadata?.organization_id || user.user_metadata?.tenant_id || 1;
+    req.tenantId = req.organizationId; // Keep for backward compatibility
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);

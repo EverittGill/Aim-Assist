@@ -19,20 +19,22 @@ class CRMFactory {
   };
 
   /**
-   * Get configured CRM adapter for tenant
-   * @param {string} tenantId - Tenant UUID
+   * Get configured CRM adapter for organization
+   * @param {string} organizationId - Organization UUID
    * @returns {Promise<CRMAdapter>} - Configured adapter instance
    */
-  static async getAdapter(tenantId) {
+  static async getAdapter(organizationId) {
+    // Support both parameter names during transition
+    const orgId = organizationId;
     try {
-      // For MVP, use demo tenant credentials from env when Supabase isn't available
-      // or for the primary test tenant or Everitt's tenant
-      // Also handle numeric tenant ID 1 and our organization ID
-      if (tenantId === 'demo-tenant' || !supabase || 
-          tenantId === '7c563f31-36bd-4414-ad44-ef9c19c1c6b1' ||
-          tenantId === 'e5669fe6-a161-4628-89e3-4b8e01f663b8' ||
-          tenantId === 1 || tenantId === '1' ||
-          tenantId === '655cd229-b2e9-4737-843b-7488fe9d33e6') {
+      // For MVP, use demo organization credentials from env when Supabase isn't available
+      // or for the primary test organization or Everitt's organization
+      // Also handle numeric organization ID 1 and our organization ID
+      if (orgId === 'demo-tenant' || !supabase || 
+          orgId === '7c563f31-36bd-4414-ad44-ef9c19c1c6b1' ||
+          orgId === 'e5669fe6-a161-4628-89e3-4b8e01f663b8' ||
+          orgId === 1 || orgId === '1' ||
+          orgId === '655cd229-b2e9-4737-843b-7488fe9d33e6') {
         console.log('Using FUB configuration from environment');
         const FollowUpBossAdapter = require('./adapters/FollowUpBossAdapter');
         
@@ -47,18 +49,18 @@ class CRMFactory {
           }
         };
         
-        return new FollowUpBossAdapter(tenantId, config);
+        return new FollowUpBossAdapter(orgId, config);
       }
       
       // Get CRM integration config from database
-      const integration = await this.getCRMIntegration(tenantId);
+      const integration = await this.getCRMIntegration(orgId);
       
       if (!integration) {
-        throw new Error(`No CRM integration found for tenant ${tenantId}`);
+        throw new Error(`No CRM integration found for organization ${orgId}`);
       }
 
       if (!integration.is_active) {
-        throw new Error(`CRM integration is not active for tenant ${tenantId}`);
+        throw new Error(`CRM integration is not active for organization ${orgId}`);
       }
 
       // Get adapter class
@@ -96,7 +98,7 @@ class CRMFactory {
       };
 
       // Instantiate and return adapter
-      return new AdapterClass(tenantId, config);
+      return new AdapterClass(orgId, config);
     } catch (error) {
       console.error('Error creating CRM adapter:', error);
       throw error;
@@ -106,13 +108,14 @@ class CRMFactory {
   /**
    * Get CRM integration from database
    */
-  static async getCRMIntegration(tenantId) {
+  static async getCRMIntegration(organizationId) {
     // For testing without Supabase
     if (!supabase) {
-      console.log('Mock CRM integration for tenant:', tenantId);
+      console.log('Mock CRM integration for organization:', organizationId);
       return {
         id: 'mock-integration',
-        tenant_id: tenantId,
+        tenant_id: organizationId,  // Keep as tenant_id for DB compatibility
+        organization_id: organizationId,
         crm_type: 'fub',
         is_active: true,
         config: {},
@@ -125,7 +128,7 @@ class CRMFactory {
     const { data, error } = await supabase
       .from('crm_configs')
       .select('*')
-      .eq('organization_id', tenantId)
+      .eq('organization_id', organizationId)
       .eq('is_active', true)
       .single();
 
@@ -167,7 +170,7 @@ class CRMFactory {
   /**
    * Store CRM credentials securely
    */
-  static async storeCredentials(tenantId, crmType, credentials) {
+  static async storeCredentials(organizationId, crmType, credentials) {
     // For testing without Supabase
     if (!supabase) {
       console.log('Mock storing credentials for:', crmType);
@@ -177,7 +180,7 @@ class CRMFactory {
     // Store in vault (placeholder - needs Supabase Vault setup)
     const { data, error } = await supabase
       .rpc('store_crm_credentials', {
-        p_tenant_id: tenantId,
+        p_tenant_id: organizationId,  // Keep parameter name as expected by DB
         p_crm_type: crmType,
         p_credentials: credentials
       });
@@ -193,10 +196,10 @@ class CRMFactory {
   /**
    * Create or update CRM integration
    */
-  static async createIntegration(tenantId, crmType, credentials, config = {}) {
+  static async createIntegration(organizationId, crmType, credentials, config = {}) {
     try {
       // Store credentials securely
-      const vaultSecretId = await this.storeCredentials(tenantId, crmType, credentials);
+      const vaultSecretId = await this.storeCredentials(organizationId, crmType, credentials);
 
       // For testing without Supabase
       if (!supabase) {

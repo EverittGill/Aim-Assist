@@ -9,8 +9,9 @@ const CRMFactory = require('./crm/CRMFactory');
 const TranslationService = require('./TranslationService');
 
 class CRMSyncService {
-  constructor(tenantId) {
-    this.tenantId = tenantId;
+  constructor(organizationId) {
+    this.organizationId = organizationId;
+    this.tenantId = organizationId; // Keep for backward compatibility
     this.batchSize = 100; // Process in batches for efficiency
     this.translator = null; // Will be initialized when we get CRM type
     this.syncStats = {
@@ -26,11 +27,11 @@ class CRMSyncService {
    * Perform full sync of all leads from CRM
    */
   async fullSync() {
-    console.log(`🔄 Starting full CRM sync for tenant ${this.tenantId}`);
+    console.log(`🔄 Starting full CRM sync for organization ${this.organizationId}`);
     const syncId = await this.startSyncTracking('full');
     
     try {
-      const adapter = await CRMFactory.getAdapter(this.tenantId);
+      const adapter = await CRMFactory.getAdapter(this.organizationId);
       const crmType = adapter.crmType || 'fub';
       this.translator = new TranslationService(crmType);
       let offset = 0;
@@ -84,11 +85,11 @@ class CRMSyncService {
    * Perform incremental sync of recently updated leads
    */
   async incrementalSync(sinceMinutesAgo = 15) {
-    console.log(`🔄 Starting incremental sync for tenant ${this.tenantId} (last ${sinceMinutesAgo} minutes)`);
+    console.log(`🔄 Starting incremental sync for organization ${this.organizationId} (last ${sinceMinutesAgo} minutes)`);
     const syncId = await this.startSyncTracking('incremental');
     
     try {
-      const adapter = await CRMFactory.getAdapter(this.tenantId);
+      const adapter = await CRMFactory.getAdapter(this.organizationId);
       
       // Calculate timestamp for incremental sync
       const sinceDate = new Date(Date.now() - sinceMinutesAgo * 60 * 1000);
@@ -130,10 +131,10 @@ class CRMSyncService {
    * Sync a single lead by CRM ID
    */
   async syncSingleLead(crmLeadId) {
-    console.log(`🔄 Syncing single lead ${crmLeadId} for tenant ${this.tenantId}`);
+    console.log(`🔄 Syncing single lead ${crmLeadId} for organization ${this.organizationId}`);
     
     try {
-      const adapter = await CRMFactory.getAdapter(this.tenantId);
+      const adapter = await CRMFactory.getAdapter(this.organizationId);
       const lead = await adapter.getLead(crmLeadId);
       
       if (!lead) {
@@ -162,7 +163,7 @@ class CRMSyncService {
         // Check auto-text rules for new/updated leads
         if (dbLead && dbLead.ai_status === 'inactive') {
           const AutoTextRulesService = require('./AutoTextRulesService');
-          await AutoTextRulesService.checkAndApplyRules(this.tenantId, dbLead);
+          await AutoTextRulesService.checkAndApplyRules(this.organizationId, dbLead);
         }
       } catch (error) {
         const leadId = lead.id || lead.fub_lead_id || lead.lofty_lead_id || 'unknown';
@@ -180,18 +181,18 @@ class CRMSyncService {
    * Upsert a single lead to the database
    */
   async upsertLead(crmLead) {
-    // Get tenant's CRM type
-    const { data: tenant, error: tenantError } = await supabase
+    // Get organization's CRM type
+    const { data: org, error: orgError } = await supabase
       .from('organizations')
       .select('crm_type')
-      .eq('id', this.tenantId)
+      .eq('id', this.organizationId)
       .single();
     
-    if (tenantError || !tenant) {
-      throw new Error(`Failed to get tenant CRM type: ${tenantError?.message}`);
+    if (orgError || !org) {
+      throw new Error(`Failed to get organization CRM type: ${orgError?.message}`);
     }
     
-    const crmType = tenant.crm_type || 'fub';
+    const crmType = org.crm_type || 'fub';
     
     // Map CRM data to our schema
     const leadData = this.mapCRMLeadToDatabase(crmLead, crmType);
@@ -233,7 +234,7 @@ class CRMSyncService {
         .from('leads')
         .insert({
           ...leadData,
-          organization_id: this.tenantId,
+          organization_id: this.organizationId,
           created_at: new Date()
         })
         .select()
@@ -446,7 +447,7 @@ class CRMSyncService {
     const { data, error } = await supabase
       .from('sync_history')
       .insert({
-        organization_id: this.tenantId,
+        organization_id: this.organizationId,
         sync_type: syncType,
         sync_status: 'started',
         crm_type: 'followupboss'
@@ -495,15 +496,15 @@ class CRMSyncService {
   }
 
   /**
-   * Get sync history for tenant
+   * Get sync history for organization
    */
-  static async getSyncHistory(tenantId, limit = 10) {
+  static async getSyncHistory(organizationId, limit = 10) {
     if (!supabase) return [];
     
     const { data, error } = await supabase
       .from('sync_history')
       .select('*')
-      .eq('organization_id', tenantId)
+      .eq('organization_id', organizationId)
       .order('started_at', { ascending: false })
       .limit(limit);
     
@@ -518,8 +519,8 @@ class CRMSyncService {
   /**
    * Get sync status
    */
-  static async getSyncStatus(tenantId) {
-    const history = await this.getSyncHistory(tenantId, 1);
+  static async getSyncStatus(organizationId) {
+    const history = await this.getSyncHistory(organizationId, 1);
     const lastSync = history[0];
     
     if (!lastSync) {
