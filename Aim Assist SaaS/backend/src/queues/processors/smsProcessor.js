@@ -69,7 +69,39 @@ module.exports = async function processSMS(job) {
       }
     }
     
-    // Update message status in database
+    // Log message to Supabase conversation
+    if (leadId && orgId) {
+      try {
+        const conversationService = new ConversationService(orgId);
+        const supabaseLeadId = job.data.metadata?.supabaseLeadId;
+        
+        // Get or create conversation using the Supabase lead ID if available
+        const leadIdToUse = supabaseLeadId || leadId;
+        const conversation = await conversationService.getOrCreateConversation(leadIdToUse);
+        
+        if (conversation) {
+          // Add outbound message to conversation
+          await conversationService.addMessage(conversation.id, {
+            lead_id: conversation.lead_id,
+            direction: 'outbound',
+            message_type: 'text',
+            sender_type: 'ai',
+            content: message,
+            channel_type: 'sms',
+            provider_sid: result.sid,
+            metadata: {
+              twilio_status: result.status,
+              ...job.data.metadata
+            }
+          });
+          console.log('✅ Message logged to Supabase conversation');
+        }
+      } catch (dbError) {
+        console.error('Error logging to Supabase:', dbError.message);
+      }
+    }
+    
+    // Update message status in database (if messageId was provided)
     if (messageId && ConversationService) {
       await ConversationService.updateMessageStatus(messageId, {
         twilio_sid: result.sid,

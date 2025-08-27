@@ -58,7 +58,7 @@ class PhoneMatchingService {
         .single();
       
       if (supabaseLead && !dbError) {
-        console.log(`✅ Found lead in Supabase: ${supabaseLead.crm_lead_id} - ${supabaseLead.full_name || 'No name'}`);
+        console.log(`✅ Found lead in Supabase: ${supabaseLead.crm_lead_id} - ${supabaseLead.first_name || ''} ${supabaseLead.last_name || ''}`.trim() || 'No name');
         return {
           lead: supabaseLead,
           source: 'supabase',
@@ -140,28 +140,30 @@ class PhoneMatchingService {
     try {
       const leadData = {
         organization_id: this.tenantId,
-        crm_lead_id: crmLead.crm_lead_id || crmLead.id,
+        fub_lead_id: crmLead.crm_lead_id || crmLead.id,
         crm_type: 'followupboss',
         first_name: crmLead.first_name || '',
         last_name: crmLead.last_name || '',
-        full_name: `${crmLead.first_name || ''} ${crmLead.last_name || ''}`.trim() || 'No name',
         email: crmLead.email,
         phone: this.formatPhoneForStorage(crmLead.phone),
         source: crmLead.source || 'sms',
         tags: crmLead.tags || [],
-        status: 'active',
-        ai_status: 'inactive', // Default to inactive for safety
-        metadata: {
+        stage: 'active',
+        ai_enabled: true, // Enable AI by default
+        ai_paused_until: null,
+        ai_pause_reason: null,
+        ai_status: 'active',
+        custom_data: {
           original_data: crmLead.crm_data || crmLead
         },
-        last_synced_at: new Date()
+        last_fub_sync: new Date()
       };
       
       // Upsert to Supabase
       const { data: upsertedLead, error } = await supabase
         .from('leads')
         .upsert(leadData, {
-          onConflict: 'tenant_id,crm_lead_id,crm_type',
+          onConflict: 'organization_id,fub_lead_id',
           ignoreDuplicates: false
         })
         .select()

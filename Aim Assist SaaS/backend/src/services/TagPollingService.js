@@ -7,7 +7,7 @@
 const { supabase } = require('../config/supabase');
 const CRMFactory = require('./crm/CRMFactory');
 const AutoTextRulesService = require('./AutoTextRulesService');
-const QueueManager = require('../queues/QueueManager').default;
+const QueueManager = require('../queues/QueueManager').default || require('../queues/QueueManager');
 
 class TagPollingService {
   constructor(organizationId) {
@@ -323,9 +323,33 @@ class TagPollingService {
    * Queue auto-text for a lead
    */
   async queueAutoText(lead, tagName) {
-    // Create personalized message
-    const firstName = lead.first_name || 'there';
-    const message = `Hi ${firstName}! I noticed you're interested in learning more about our properties. I'm here to help you find exactly what you're looking for. What specific features are most important to you in your next home?`;
+    let message;
+    
+    try {
+      // Use AIService to generate initial outreach instead of hardcoded message
+      const AIService = require('./ai/AIService');
+      const aiService = new AIService(this.tenantId);
+      await aiService.initialize();
+      
+      // Generate initial outreach message using AI
+      const aiResponse = await aiService.generateInitialOutreach({
+        lead: {
+          first_name: lead.first_name,
+          last_name: lead.last_name,
+          source: lead.source || tagName,
+          tags: lead.tags || []
+        },
+        templateId: 'initial_outreach'
+      });
+      
+      message = aiResponse.content;
+      console.log(`🤖 Generated initial message: "${message}"`);
+    } catch (error) {
+      console.error(`Failed to generate AI message for lead ${lead.id}:`, error.message);
+      // Fallback to simple message if AI fails
+      const firstName = lead.first_name || 'there';
+      message = `Hi ${firstName}! I'm here to help with your real estate needs. What are you looking for?`;
+    }
     
     // Queue with 30-60 second delay for natural feel
     const delaySeconds = 30 + Math.floor(Math.random() * 30);
@@ -333,7 +357,7 @@ class TagPollingService {
     // Use queueSMS method like other services do, with proper field name translation
     await QueueManager.queueSMS({
       tenantId: lead.organization_id,  // Translate organization_id to tenantId
-      leadId: lead.id,
+      leadId: lead.fub_lead_id || lead.lofty_lead_id || lead.id, // Use CRM ID for logging
       to: lead.phone,                   // Translate phone to to
       message: message,
       conversationId: null,
@@ -341,7 +365,8 @@ class TagPollingService {
       metadata: {
         trigger: `tag_${tagName}`,
         tag: tagName,
-        auto_text: true
+        auto_text: true,
+        supabaseLeadId: lead.id  // Keep Supabase ID for reference
       }
     });
     

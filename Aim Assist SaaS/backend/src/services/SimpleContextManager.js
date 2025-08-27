@@ -27,7 +27,7 @@ class SimpleContextManager {
           .from('leads')
           .select('id')
           .eq('organization_id', this.organizationId)
-          .or(`fub_lead_id.eq.${leadId},crm_lead_id.eq.${leadId}`)
+          .eq('fub_lead_id', leadId)  // Fixed to use only fub_lead_id
           .single();
         
         if (lead) {
@@ -225,7 +225,7 @@ class SimpleContextManager {
         .from('leads')
         .select('first_name, last_name, source, tags')
         .eq('organization_id', this.organizationId)
-        .or(`id.eq.${leadId},fub_lead_id.eq.${leadId},crm_lead_id.eq.${leadId}`)
+        .or(`id.eq.${leadId},fub_lead_id.eq.${leadId}`)  // Fixed to remove crm_lead_id
         .single();
       
       return {

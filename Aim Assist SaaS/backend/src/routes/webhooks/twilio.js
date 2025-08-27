@@ -126,22 +126,71 @@ async function processIncomingSMS(data) {
     }
     
     const { lead, source, needsSync } = result;
-    const leadId = lead.crm_lead_id || lead.id;
     
-    console.log(`✅ Lead ${leadId} (${lead.full_name || 'No name'}) - Source: ${source}`);
+    // Ensure we have the correct CRM lead ID
+    let crmLeadId = lead.crm_lead_id;
+    
+    // If we don't have a CRM lead ID, we need to find it in FUB by phone
+    if (!crmLeadId && source === 'supabase') {
+      console.log('⚠️ Lead found in Supabase but missing CRM ID, searching FUB by phone...');
+      const adapter = await CRMFactory.getAdapter(organizationId);
+      const crmLead = await adapter.findLeadByPhone(fromPhone);
+      if (crmLead) {
+        crmLeadId = crmLead.id || crmLead.crm_lead_id;
+        // Update the Supabase lead with the CRM ID
+        const { supabase } = require('../../config/supabase');
+        if (supabase && lead.id) {
+          await supabase
+            .from('leads')
+            .update({ crm_lead_id: crmLeadId })
+            .eq('id', lead.id)
+            .eq('organization_id', organizationId);
+          console.log(`✅ Updated lead ${lead.id} with CRM ID ${crmLeadId}`);
+        }
+      } else {
+        console.log('❌ Lead not found in FUB, creating new lead...');
+        const newLead = await adapter.createLead({
+          phone: fromPhone,
+          first_name: lead.first_name || 'Unknown',
+          last_name: lead.last_name || '',
+          source: 'sms_inbound',
+          tags: ['sms_lead', 'AIM_ASSIST']
+        });
+        crmLeadId = newLead.id || newLead.crm_lead_id;
+        // Update Supabase with the new CRM ID
+        const { supabase } = require('../../config/supabase');
+        if (supabase && lead.id) {
+          await supabase
+            .from('leads')
+            .update({ crm_lead_id: crmLeadId })
+            .eq('id', lead.id)
+            .eq('organization_id', organizationId);
+        }
+      }
+    }
+    
+    // Use Supabase ID for internal operations, CRM ID for FUB operations
+    const leadId = lead.id || crmLeadId;
+    const leadIdForCRM = crmLeadId || lead.crm_lead_id;
+    
+    console.log(`✅ Lead ${leadIdForCRM} (${`${lead.first_name || ''} ${lead.last_name || ''}`.trim() || 'No name'}) - Source: ${source}`);
     
     // If we need to sync, get latest from CRM first
-    if (needsSync) {
+    if (needsSync && leadIdForCRM) {
       console.log('🔄 Syncing lead data from CRM...');
       const adapter = await CRMFactory.getAdapter(organizationId);
-      const crmLead = await adapter.getLead(leadId);
+      const crmLead = await adapter.getLead(leadIdForCRM);
       if (crmLead) {
         await phoneService.syncLeadToSupabase(crmLead);
       }
     }
     
-    // Process the message
-    await processLeadMessage(organizationId, leadId, messageContent, twilioSid, { fromPhone, toPhone });
+    // Process the message - pass both IDs
+    await processLeadMessage(organizationId, leadId, messageContent, twilioSid, { 
+      fromPhone, 
+      toPhone,
+      crmLeadId: leadIdForCRM 
+    });
     
   } catch (error) {
     console.error('Error processing SMS:', error);
@@ -153,42 +202,43 @@ async function processIncomingSMS(data) {
  */
 async function processLeadMessage(organizationId, leadId, messageContent, twilioSid, phoneData = {}) {
   try {
-    console.log(`💬 Processing message for lead ${leadId} in tenant ${organizationId}`);
+    const crmLeadId = phoneData.crmLeadId || leadId;
+    console.log(`💬 Processing message for lead ${leadId} (CRM: ${crmLeadId}) in tenant ${organizationId}`);
     
     // First, ensure the lead exists in our database
     const { supabase } = require('../../config/supabase');
     
     if (supabase) {
-      // Check if lead exists in database
+      // Check if lead exists in database - use CRM lead ID for lookup
       const { data: existingLead, error: checkError } = await supabase
         .from('leads')
         .select('id')
         .eq('organization_id', organizationId)
-        .eq('crm_lead_id', leadId)
+        .eq('fub_lead_id', crmLeadId)  // Changed from crm_lead_id
         .single();
       
       if (!existingLead) {
-        console.log(`📝 Creating lead ${leadId} in database...`);
+        console.log(`📝 Creating lead ${crmLeadId} in database...`);
         
-        // Get lead details from CRM
+        // Get lead details from CRM using CRM ID
         const adapter = await CRMFactory.getAdapter(organizationId);
-        const crmLead = await adapter.getLead(leadId);
+        const crmLead = await adapter.getLead(crmLeadId);
         
         // Create lead in database
         const { data: newLead, error: createError } = await supabase
           .from('leads')
           .insert({
             organization_id: organizationId,
-            crm_lead_id: leadId,
+            fub_lead_id: crmLeadId,  // Changed from crm_lead_id
             crm_type: 'followupboss',
             first_name: crmLead.first_name || 'Unknown',
             last_name: crmLead.last_name || '',
             email: crmLead.email || null,
             phone: crmLead.phone || null,
-            status: 'active',
+            stage: 'active',  // Changed from status
             source: crmLead.source || 'sms',
             tags: crmLead.tags || [],
-            metadata: {
+            custom_data: {  // Changed from metadata
               original_data: crmLead
             }
           })
@@ -205,23 +255,23 @@ async function processLeadMessage(organizationId, leadId, messageContent, twilio
     
     const conversationService = new ConversationService(organizationId);
     
-    // Get or create conversation FIRST (needed for message storage)
-    const conversation = await conversationService.getOrCreateConversation(leadId);
+    // Get or create conversation FIRST (needed for message storage) - use CRM ID
+    const conversation = await conversationService.getOrCreateConversation(crmLeadId);
     
     if (!conversation || !conversation.id) {
-      console.error('❌ Failed to get/create conversation for lead:', leadId);
-      throw new Error(`Cannot process message without valid conversation for lead ${leadId}`);
+      console.error('❌ Failed to get/create conversation for lead:', crmLeadId);
+      throw new Error(`Cannot process message without valid conversation for lead ${crmLeadId}`);
     }
     
-    // Sync CRM messages and get enrichment
+    // Sync CRM messages and get enrichment - use CRM ID for CRM operations
     let enrichedContext = {};
     try {
-      console.log(`🔄 Syncing and enriching context for lead ${leadId}...`);
+      console.log(`🔄 Syncing and enriching context for lead ${crmLeadId}...`);
       const syncService = new ConversationSyncService(organizationId);
-      await syncService.syncConversationBeforeAI(leadId);
+      await syncService.syncConversationBeforeAI(crmLeadId);
       
       const contextService = new ContextEnrichmentService(organizationId);
-      enrichedContext = await contextService.getEnrichedContext(leadId);
+      enrichedContext = await contextService.getEnrichedContext(crmLeadId);
       console.log(`✅ Context enrichment successful`);
     } catch (enrichError) {
       console.error('⚠️ Enrichment failed, continuing with basic context:', enrichError.message);
@@ -236,7 +286,7 @@ async function processLeadMessage(organizationId, leadId, messageContent, twilio
         .from('leads')
         .select('id')
         .eq('organization_id', organizationId)
-        .eq('crm_lead_id', leadId)
+        .eq('fub_lead_id', crmLeadId)  // Changed from crm_lead_id
         .single();
       
       if (dbLead) {
@@ -357,7 +407,7 @@ async function generateAndQueueAIResponse(organizationId, leadId, conversationId
       .from('leads')
       .select('*')
       .eq('organization_id', organizationId)
-      .eq('crm_lead_id', leadId)
+      .eq('fub_lead_id', leadId)  // Fixed column name
       .single();
     
     // If not found and leadId looks like a UUID, try by database ID

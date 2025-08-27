@@ -96,7 +96,7 @@ class AutoTextRulesService {
     const { data, error } = await supabase
       .from('auto_text_rules')
       .select('*')
-      .eq('organization_id', organizationId)
+      .eq('organization_id', tenantId)
       .eq('is_active', true)
       .order('priority', { ascending: true }); // Lower priority number = higher priority
     

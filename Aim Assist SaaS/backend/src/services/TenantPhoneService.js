@@ -28,35 +28,53 @@ class TenantPhoneService {
     // Check cache first
     const cached = this.phoneCache.get(normalizedPhone);
     if (cached && cached.expires > Date.now()) {
-      console.log(`📱 Cache hit: ${normalizedPhone} → Tenant ${cached.tenantId}`);
+      console.log(`📱 Cache hit: ${normalizedPhone} → Organization ${cached.tenantId}`);
       return cached.tenantId;
     }
 
     try {
-      // Query database for phone-to-tenant mapping
+      // Query organizations table for phone-to-org mapping using ai_phone_number
+      // Use limit(1) instead of single() since multiple orgs might have same phone temporarily
       const { data, error } = await supabase
-        .from('phone_numbers')
-        .select('tenant_id, is_active')
-        .eq('phone_number', normalizedPhone)
-        .eq('is_active', true)
-        .single();
+        .from('organizations')
+        .select('id')
+        .eq('ai_phone_number', normalizedPhone)
+        .limit(1);
 
-      if (error || !data) {
-        console.error(`❌ No active tenant found for phone ${normalizedPhone}`);
+      if (error || !data || data.length === 0) {
+        // Try without normalization in case it's stored differently
+        const { data: data2 } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('ai_phone_number', twilioPhoneNumber)
+          .limit(1);
+          
+        if (data2 && data2.length > 0) {
+          // Cache the result
+          this.phoneCache.set(normalizedPhone, {
+            tenantId: data2[0].id,
+            expires: Date.now() + this.cacheTimeout
+          });
+          console.log(`✅ Found organization ${data2[0].id} for phone ${twilioPhoneNumber}`);
+          return data2[0].id;
+        }
+        
+        console.error(`❌ No organization found for phone ${normalizedPhone}`);
         return null;
       }
 
-      // Cache the result
+      // Cache the result (use first org if multiple have same phone)
+      const orgId = data[0].id;
       this.phoneCache.set(normalizedPhone, {
-        tenantId: data.tenant_id,
+        tenantId: orgId,
         expires: Date.now() + this.cacheTimeout
       });
 
-      console.log(`✅ Found tenant ${data.tenant_id} for phone ${normalizedPhone}`);
-      return data.tenant_id;
+      console.log(`✅ Found organization ${orgId} for phone ${normalizedPhone}`);
+      return orgId;
 
     } catch (error) {
-      console.error('Error looking up tenant by phone:', error);
+      console.error('Error looking up organization by phone:', error);
       return null;
     }
   }
@@ -66,37 +84,21 @@ class TenantPhoneService {
    */
   async getTenantPrimaryPhone(tenantId) {
     try {
+      // Get phone number from organizations table
       const { data, error } = await supabase
-        .from('phone_numbers')
-        .select('phone_number, capabilities')
-        .eq('organization_id', tenantId)
-        .eq('is_primary', true)
-        .eq('is_active', true)
+        .from('organizations')
+        .select('ai_phone_number')
+        .eq('id', tenantId)
         .single();
 
-      if (error || !data) {
-        // Fallback to any active SMS-capable number
-        const { data: fallback } = await supabase
-          .from('phone_numbers')
-          .select('phone_number, capabilities')
-          .eq('organization_id', tenantId)
-          .eq('is_active', true)
-          .not('capabilities->sms', 'is', false)
-          .limit(1)
-          .single();
-
-        if (fallback) {
-          console.log(`📱 Using fallback phone for tenant ${tenantId}: ${fallback.phone_number}`);
-          return fallback.phone_number;
-        }
-
-        throw new Error(`No active phone numbers found for tenant ${tenantId}`);
+      if (error || !data || !data.ai_phone_number) {
+        throw new Error(`No AI phone number found for organization ${tenantId}`);
       }
 
-      return data.phone_number;
+      return data.ai_phone_number;
 
     } catch (error) {
-      console.error('Error getting tenant primary phone:', error);
+      console.error('Error getting organization AI phone:', error);
       throw error;
     }
   }
@@ -288,5 +290,17 @@ class TenantPhoneService {
   }
 }
 
+// Create singleton instance
+const instance = new TenantPhoneService();
+
+// Add static method for webhook usage
+TenantPhoneService.getTenantFromPhone = async function(phoneNumber) {
+  return instance.getTenantFromPhone(phoneNumber);
+};
+
+TenantPhoneService.getTenantPrimaryPhone = async function(tenantId) {
+  return instance.getTenantPrimaryPhone(tenantId);
+};
+
 // Export as singleton
-module.exports = new TenantPhoneService();
+module.exports = instance;
