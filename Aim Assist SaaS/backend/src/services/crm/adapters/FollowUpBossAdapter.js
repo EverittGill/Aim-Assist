@@ -337,6 +337,8 @@ class FollowUpBossAdapter extends CRMAdapter {
       last_name: fubLead.lastName,
       email: email,
       phone: this.normalizePhone(phone),
+      phones: fubLead.phones || [],  // Include full phones array for TagPollingService
+      emails: fubLead.emails || [],  // Include full emails array too
       source: fubLead.source,
       tags: fubLead.tags?.map(t => typeof t === 'string' ? t : t.name) || [],
       stage: fubLead.stage,
@@ -427,6 +429,90 @@ class FollowUpBossAdapter extends CRMAdapter {
       
       default:
         return { type: 'unknown', data: webhookData };
+    }
+  }
+
+  /**
+   * Get lead activities from CRM
+   * @param {string} leadId - CRM lead ID
+   * @param {object} options - Query options
+   * @returns {array} Activities array
+   */
+  async getActivities(leadId, options = {}) {
+    try {
+      console.log(`📋 Getting activities for lead ${leadId} (stub - not implemented)`);
+      // TODO: Implement when FUB provides activity API
+      // For now, return empty array to prevent crashes
+      return [];
+    } catch (error) {
+      console.error('Error getting activities:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get property views for a lead
+   * @param {string} leadId - CRM lead ID
+   * @param {object} options - Query options
+   * @returns {array} Property views array
+   */
+  async getPropertyViews(leadId, options = {}) {
+    try {
+      console.log(`🏠 Getting property views for lead ${leadId} (stub - not implemented)`);
+      // TODO: Implement when FUB provides property view API
+      // For now, return empty array to prevent crashes
+      return [];
+    } catch (error) {
+      console.error('Error getting property views:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get custom fields for a lead
+   * @param {string} leadId - CRM lead ID
+   * @returns {object} Custom fields object
+   */
+  async getCustomFields(leadId) {
+    try {
+      console.log(`🔧 Getting custom fields for lead ${leadId}`);
+      
+      // Get the lead with all fields
+      const response = await axios.get(`${this.baseUrl}/people/${leadId}`, {
+        headers: this.getHeaders()
+      });
+      
+      const lead = response.data;
+      
+      // Extract custom fields (fields starting with 'custom')
+      const customFields = {};
+      for (const [key, value] of Object.entries(lead)) {
+        if (key.startsWith('custom')) {
+          customFields[key] = value;
+        }
+      }
+      
+      return customFields;
+    } catch (error) {
+      console.error('Error getting custom fields:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Get lead score (not available in FUB)
+   * @param {string} leadId - CRM lead ID
+   * @returns {number} Lead score
+   */
+  async getLeadScore(leadId) {
+    try {
+      console.log(`📊 Getting lead score for ${leadId} (stub - not implemented)`);
+      // FUB doesn't have built-in lead scoring
+      // Would need to calculate based on activity or use custom field
+      return null;
+    } catch (error) {
+      console.error('Error getting lead score:', error);
+      return null;
     }
   }
 

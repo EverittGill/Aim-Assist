@@ -152,7 +152,7 @@ IMPORTANT:
 
     try {
       const response = await this.anthropic.messages.create({
-        model: 'claude-3-haiku-20240307',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
         temperature: 0.1,
         messages: [{
@@ -211,7 +211,7 @@ Reply with JSON only:
 
     try {
       const response = await this.anthropic.messages.create({
-        model: 'claude-3-haiku-20240307',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 500,
         temperature: 0,
         messages: [{

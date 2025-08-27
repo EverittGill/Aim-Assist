@@ -117,6 +117,18 @@ class QueueManager {
         }
       });
       
+      this.createQueue('tag-poll', {
+        defaultJobOptions: {
+          removeOnComplete: 10,
+          removeOnFail: 10,
+          attempts: 2,
+          backoff: {
+            type: 'fixed',
+            delay: 60000 // 1 minute between retries
+          }
+        }
+      });
+      
       // Register processors
       this.registerProcessors();
       
@@ -232,6 +244,12 @@ class QueueManager {
     if (this.queues.extraction) {
       const extractionProcessor = require('./processors/extractionProcessor');
       this.queues.extraction.process(extractionProcessor);
+    }
+    
+    // Tag Poll Queue Processor
+    if (this.queues['tag-poll']) {
+      const tagPollProcessor = require('./processors/tagPollProcessor');
+      this.queues['tag-poll'].process(tagPollProcessor);
     }
   }
 

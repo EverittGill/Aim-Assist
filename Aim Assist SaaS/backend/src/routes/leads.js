@@ -3,6 +3,7 @@ const router = express.Router();
 const CRMFactory = require('../services/crm/CRMFactory');
 const LeadService = require('../services/LeadService');
 const ConversationService = require('../services/ConversationService');
+const TranslationService = require('../services/TranslationService');
 const { supabase } = require('../config/supabase');
 
 /**
@@ -58,6 +59,12 @@ module.exports = (authService) => {
       const tenantId = req.tenantId || req.query.tenant_id || 'demo-tenant';
       console.log(`Fetching leads from Supabase for tenant: ${tenantId}`);
       
+      // Get CRM type for this tenant
+      const adapter = await CRMFactory.getAdapter(tenantId);
+      const crmType = adapter.crmType || 'fub';
+      const translator = new TranslationService(crmType);
+      const crmIdField = translator.getCRMLeadIdField();
+      
       // Fetch leads from Supabase database (not CRM directly)
       const { data: leads, error } = await supabase
         .from('leads')
@@ -70,7 +77,7 @@ module.exports = (authService) => {
             unread_count
           )
         `)
-        .eq('tenant_id', tenantId)
+        .eq('organization_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(200);
       
@@ -81,7 +88,7 @@ module.exports = (authService) => {
       
       // Transform leads to frontend format
       const transformedLeads = (leads || []).map(lead => ({
-        id: lead.crm_lead_id || lead.id,
+        id: lead[crmIdField] || lead.id,
         db_id: lead.id, // Internal database ID
         name: `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || 'Unknown Lead',
         email: lead.email,
@@ -115,6 +122,12 @@ module.exports = (authService) => {
       const tenantId = req.tenantId || 'demo-tenant';
       const leadId = req.params.id;
       
+      // Get CRM type for dynamic field lookup
+      const adapter = await CRMFactory.getAdapter(tenantId);
+      const crmType = adapter.crmType || 'fub';
+      const translator = new TranslationService(crmType);
+      const crmIdField = translator.getCRMLeadIdField();
+      
       // Try to fetch by CRM ID first, then by database ID
       const { data: lead, error } = await supabase
         .from('leads')
@@ -127,8 +140,8 @@ module.exports = (authService) => {
             unread_count
           )
         `)
-        .eq('tenant_id', tenantId)
-        .or(`crm_lead_id.eq.${leadId},id.eq.${leadId}`)
+        .eq('organization_id', tenantId)
+        .or(`${crmIdField}.eq.${leadId},id.eq.${leadId}`)
         .single();
       
       if (error || !lead) {
@@ -137,7 +150,7 @@ module.exports = (authService) => {
       
       // Transform to frontend format
       const transformedLead = {
-        id: lead.crm_lead_id || lead.id,
+        id: lead[crmIdField] || lead.id,
         db_id: lead.id,
         name: `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || 'Unknown Lead',
         email: lead.email,
@@ -193,6 +206,12 @@ module.exports = (authService) => {
       const leadId = req.params.id;
       const updates = req.body;
       
+      // Get CRM type for dynamic field lookup
+      const adapter = await CRMFactory.getAdapter(tenantId);
+      const crmType = adapter.crmType || 'fub';
+      const translator = new TranslationService(crmType);
+      const crmIdField = translator.getCRMLeadIdField();
+      
       // Update in Supabase first
       const { data: updatedLead, error } = await supabase
         .from('leads')
@@ -200,8 +219,8 @@ module.exports = (authService) => {
           ...updates,
           updated_at: new Date().toISOString()
         })
-        .eq('tenant_id', tenantId)
-        .or(`crm_lead_id.eq.${leadId},id.eq.${leadId}`)
+        .eq('organization_id', tenantId)
+        .or(`${crmIdField}.eq.${leadId},id.eq.${leadId}`)
         .select()
         .single();
       
@@ -212,8 +231,7 @@ module.exports = (authService) => {
       // Queue background job to sync to CRM
       // This ensures frontend gets immediate response
       try {
-        const adapter = await CRMFactory.getAdapter(tenantId);
-        await adapter.updateLead(updatedLead.crm_lead_id, updates);
+        await adapter.updateLead(updatedLead[crmIdField], updates);
         console.log('✅ Lead synced to CRM');
       } catch (crmError) {
         console.error('⚠️ Failed to sync to CRM (will retry):', crmError.message);

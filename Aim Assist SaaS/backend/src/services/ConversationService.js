@@ -33,32 +33,55 @@ class ConversationService {
 
   /**
    * Get or create conversation for lead
+   * @param {string} leadId - Can be either UUID (Supabase) or CRM ID
    */
-  async getOrCreateConversation(crmLeadId) {
+  async getOrCreateConversation(leadId) {
     try {
       if (!supabase) {
         throw new Error('Supabase not configured - cannot create conversation');
       }
       
-      // First get the database lead ID from CRM lead ID
-      const { data: lead, error: leadError } = await supabase
-        .from('leads')
-        .select('id')
-        .eq('tenant_id', this.tenantId)
-        .eq('crm_lead_id', crmLeadId)
-        .single();
+      let dbLeadId;
       
-      if (leadError || !lead) {
-        throw new Error(`Lead not found in database for CRM ID ${crmLeadId}: ${leadError?.message || 'No lead found'}`);
+      // Check if this is a UUID (Supabase ID) or CRM ID
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(leadId);
+      
+      if (isUUID) {
+        // It's already a Supabase UUID, use it directly
+        dbLeadId = leadId;
+        
+        // Verify the lead exists
+        const { data: lead, error } = await supabase
+          .from('leads')
+          .select('id')
+          .eq('organization_id', this.tenantId)
+          .eq('id', leadId)
+          .single();
+          
+        if (error || !lead) {
+          throw new Error(`Lead not found for UUID ${leadId}: ${error?.message || 'No lead found'}`);
+        }
+      } else {
+        // It's a CRM ID, need to look it up
+        const { data: lead, error: leadError } = await supabase
+          .from('leads')
+          .select('id')
+          .eq('organization_id', this.tenantId)
+          .or(`fub_lead_id.eq.${leadId},lofty_lead_id.eq.${leadId}`)
+          .single();
+        
+        if (leadError || !lead) {
+          throw new Error(`Lead not found for CRM ID ${leadId}: ${leadError?.message || 'No lead found'}`);
+        }
+        
+        dbLeadId = lead.id;
       }
-      
-      const dbLeadId = lead.id;
       
       // Check for existing conversation
       let { data: conversation, error } = await supabase
         .from('conversations')
         .select('*')
-        .eq('tenant_id', this.tenantId)
+        .eq('organization_id', this.tenantId)
         .eq('lead_id', dbLeadId)
         .single();
       
@@ -67,12 +90,14 @@ class ConversationService {
         const result = await supabase
           .from('conversations')
           .insert([{
-            tenant_id: this.tenantId,
+            organization_id: this.tenantId,
             lead_id: dbLeadId,
-            channel_type: 'sms',  // Added required field
             status: 'active',
             ai_enabled: true,
-            metadata: { crm_lead_id: crmLeadId }
+            message_count: 0,
+            ai_message_count: 0,
+            agent_message_count: 0,
+            started_at: new Date()
           }])
           .select()
           .single();
@@ -101,7 +126,7 @@ class ConversationService {
         const mockMessage = {
           id: 'msg-' + Date.now(),
           conversation_id: conversationId,
-          tenant_id: this.tenantId,
+          organization_id: this.tenantId,
           ...messageData,
           created_at: new Date()
         };
@@ -111,7 +136,7 @@ class ConversationService {
       
       const messageToInsert = {
         conversation_id: conversationId,
-        tenant_id: this.tenantId,
+        organization_id: this.tenantId,
         ...messageData
       };
       
@@ -199,7 +224,7 @@ class ConversationService {
         return [
           {
             id: 'conv-1',
-            tenant_id: this.tenantId,
+            organization_id: this.tenantId,
             lead: { first_name: 'John', last_name: 'Doe' },
             status: 'active',
             message_count: 5,
@@ -220,7 +245,7 @@ class ConversationService {
             email
           )
         `)
-        .eq('tenant_id', this.tenantId);
+        .eq('organization_id', this.tenantId);
       
       if (filters.status) {
         query = query.eq('status', filters.status);

@@ -17,7 +17,7 @@ class AuditService {
    */
   async logExtraction(data) {
     const auditEntry = {
-      tenant_id: this.tenantId,
+      organization_id: this.tenantId,
       event_type: 'extraction',
       entity_type: 'lead',
       entity_id: data.leadId,
@@ -50,7 +50,7 @@ class AuditService {
    */
   async logCRMUpdate(data) {
     const auditEntry = {
-      tenant_id: this.tenantId,
+      organization_id: this.tenantId,
       event_type: 'crm_update',
       entity_type: 'lead',
       entity_id: data.leadId,
@@ -80,7 +80,7 @@ class AuditService {
    */
   async logAIInteraction(data) {
     const auditEntry = {
-      tenant_id: this.tenantId,
+      organization_id: this.tenantId,
       event_type: 'ai_interaction',
       entity_type: 'conversation',
       entity_id: data.conversationId,
@@ -112,7 +112,7 @@ class AuditService {
    */
   async logManualReview(data) {
     const auditEntry = {
-      tenant_id: this.tenantId,
+      organization_id: this.tenantId,
       event_type: 'manual_review',
       entity_type: 'extraction',
       entity_id: data.extractionId,
@@ -141,7 +141,7 @@ class AuditService {
    */
   async logEscalation(data) {
     const auditEntry = {
-      tenant_id: this.tenantId,
+      organization_id: this.tenantId,
       event_type: 'escalation',
       entity_type: 'lead',
       entity_id: data.leadId,
@@ -170,7 +170,7 @@ class AuditService {
    */
   async logDataAccess(data) {
     const auditEntry = {
-      tenant_id: this.tenantId,
+      organization_id: this.tenantId,
       event_type: 'data_access',
       entity_type: data.entityType,
       entity_id: data.entityId,
@@ -251,7 +251,7 @@ class AuditService {
       let query = supabase
         .from('audit_logs')
         .select('*')
-        .eq('tenant_id', this.tenantId);
+        .eq('organization_id', this.tenantId);
 
       if (filters.eventType) {
         query = query.eq('event_type', filters.eventType);
@@ -547,7 +547,7 @@ class AuditService {
       const { data, error } = await supabase
         .from('audit_logs')
         .delete()
-        .eq('tenant_id', this.tenantId)
+        .eq('organization_id', this.tenantId)
         .lt('timestamp', cutoffDate.toISOString())
         .select();
       

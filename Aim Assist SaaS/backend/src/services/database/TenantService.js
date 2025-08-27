@@ -124,7 +124,7 @@ class TenantService {
       const { data, error } = await this.supabase
         .from('crm_integrations')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('organization_id', tenantId)
         .eq('is_active', true);
 
       if (error) {
@@ -147,7 +147,7 @@ class TenantService {
       const { data, error } = await this.supabase
         .from('communication_channels')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('organization_id', tenantId)
         .eq('is_active', true);
 
       if (error) {
@@ -170,7 +170,7 @@ class TenantService {
       const { data, error } = await this.supabase
         .from('ai_configurations')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('organization_id', tenantId)
         .eq('is_active', true)
         .order('is_default', { ascending: false })
         .limit(1)
@@ -198,7 +198,7 @@ class TenantService {
   getDefaultAIConfiguration() {
     return {
       ai_provider: 'claude',
-      ai_model: 'claude-3-haiku',
+      ai_model: 'claude-sonnet-4-20250514',
       temperature: 0.7,
       max_tokens: 256,
       response_delay_seconds: 45,
@@ -217,7 +217,7 @@ class TenantService {
       const { error } = await this.supabase
         .from('usage_tracking')
         .insert({
-          tenant_id: tenantId,
+          organization_id: tenantId,
           metric_type: metricType,
           quantity: quantity,
           created_at: new Date().toISOString()
@@ -248,7 +248,7 @@ class TenantService {
       const { data, error } = await this.supabase
         .from('usage_tracking')
         .select('quantity')
-        .eq('tenant_id', tenantId)
+        .eq('organization_id', tenantId)
         .eq('metric_type', metricType)
         .gte('created_at', startOfMonth.toISOString());
 

@@ -25,7 +25,7 @@ class NurturingService {
       const { data: lead } = await supabase
         .from('leads')
         .select('*')
-        .eq('tenant_id', this.tenantId)
+        .eq('organization_id', this.tenantId)
         .eq('crm_lead_id', leadId)
         .single();
       
@@ -213,7 +213,7 @@ class NurturingService {
       const { data: leads } = await supabase
         .from('leads')
         .select('*')
-        .eq('tenant_id', this.tenantId)
+        .eq('organization_id', this.tenantId)
         .eq('ai_status', 'active')
         .eq('status', 'active')
         .not('phone', 'is', null);
@@ -350,7 +350,7 @@ class NurturingService {
       await supabase
         .from('campaign_metrics')
         .insert({
-          tenant_id: this.tenantId,
+          organization_id: this.tenantId,
           campaign_type: campaignType,
           action,
           timestamp: new Date()

@@ -18,7 +18,9 @@
     "start": "cd backend && npm start"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "@supabase/supabase-js": "^2.56.0",
+    "concurrently": "^8.2.2",
+    "supabase": "^2.34.3"
   },
   "workspaces": [
     "frontend",

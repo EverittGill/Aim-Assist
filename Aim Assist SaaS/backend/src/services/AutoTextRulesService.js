@@ -96,7 +96,7 @@ class AutoTextRulesService {
     const { data, error } = await supabase
       .from('auto_text_rules')
       .select('*')
-      .eq('tenant_id', tenantId)
+      .eq('organization_id', tenantId)
       .eq('is_active', true)
       .order('priority', { ascending: true }); // Lower priority number = higher priority
     
@@ -195,7 +195,7 @@ class AutoTextRulesService {
       await supabase
         .from('auto_text_applications')
         .insert({
-          tenant_id: tenantId,
+          organization_id: tenantId,
           lead_id: lead.id,
           rule_id: rule.id,
           scheduled_at: new Date(Date.now() + delay),
@@ -278,18 +278,29 @@ class AutoTextRulesService {
   static async updateRuleStats(ruleId, action) {
     if (!supabase) return;
     
-    const updates = {};
-    if (action === 'sent') {
-      updates.sends_count = supabase.raw('sends_count + 1');
-      updates.last_triggered_at = new Date();
-    } else if (action === 'response') {
-      updates.responses_count = supabase.raw('responses_count + 1');
+    try {
+      // Get current stats
+      const { data: currentRule } = await supabase
+        .from('auto_text_rules')
+        .select('sends_count, responses_count')
+        .eq('id', ruleId)
+        .single();
+      
+      const updates = {};
+      if (action === 'sent') {
+        updates.sends_count = (currentRule?.sends_count || 0) + 1;
+        updates.last_triggered_at = new Date();
+      } else if (action === 'response') {
+        updates.responses_count = (currentRule?.responses_count || 0) + 1;
+      }
+      
+      await supabase
+        .from('auto_text_rules')
+        .update(updates)
+        .eq('id', ruleId);
+    } catch (error) {
+      console.error('Error updating rule stats:', error);
     }
-    
-    await supabase
-      .from('auto_text_rules')
-      .update(updates)
-      .eq('id', ruleId);
   }
   
   /**
@@ -305,7 +316,7 @@ class AutoTextRulesService {
         updated_at: new Date()
       })
       .eq('id', leadId)
-      .eq('tenant_id', tenantId);
+      .eq('organization_id', tenantId);
     
     console.log(`🤖 AI enabled for lead ${leadId}`);
   }
@@ -317,7 +328,7 @@ class AutoTextRulesService {
     if (!supabase) throw new Error('Database not configured');
     
     const rule = {
-      tenant_id: tenantId,
+      organization_id: tenantId,
       name: ruleData.name,
       description: ruleData.description,
       is_active: false, // Always start inactive for safety
@@ -358,7 +369,7 @@ class AutoTextRulesService {
     const { data, error } = await supabase
       .from('auto_text_rules')
       .select('*')
-      .eq('tenant_id', tenantId)
+      .eq('organization_id', tenantId)
       .order('priority', { ascending: true });
     
     if (error) {
@@ -455,7 +466,7 @@ class AutoTextRulesService {
 const createTrackingTable = `
 CREATE TABLE IF NOT EXISTS public.auto_text_applications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
   rule_id UUID NOT NULL REFERENCES auto_text_rules(id) ON DELETE CASCADE,
   scheduled_at TIMESTAMPTZ,
@@ -463,7 +474,7 @@ CREATE TABLE IF NOT EXISTS public.auto_text_applications (
   status VARCHAR(50) DEFAULT 'scheduled',
   error_message TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  INDEX idx_applications_status (tenant_id, status),
+  INDEX idx_applications_status (organization_id, status),
   CHECK (status IN ('scheduled', 'sent', 'failed', 'cancelled'))
 );
 `;

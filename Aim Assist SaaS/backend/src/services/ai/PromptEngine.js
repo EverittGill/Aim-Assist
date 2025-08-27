@@ -60,7 +60,7 @@ Assistant: [Generate a helpful, natural response under 160 characters addressing
         const { data, error } = await supabase
           .from('templates')
           .select('content')
-          .eq('tenant_id', this.tenantId)
+          .eq('organization_id', this.tenantId)
           .eq('name', templateName)
           .eq('is_active', true)
           .single();
@@ -92,7 +92,7 @@ Assistant: [Generate a helpful, natural response under 160 characters addressing
       const { data, error } = await supabase
         .from('templates')
         .upsert({
-          tenant_id: this.tenantId,
+          organization_id: this.tenantId,
           name: templateName,
           type,
           content,
@@ -189,7 +189,7 @@ Assistant: [Generate a helpful, natural response under 160 characters addressing
         const { data, error } = await supabase
           .from('templates')
           .select('*')
-          .eq('tenant_id', this.tenantId)
+          .eq('organization_id', this.tenantId)
           .eq('is_active', true);
         
         if (data) {
@@ -227,7 +227,7 @@ Assistant: [Generate a helpful, natural response under 160 characters addressing
         await supabase
           .from('templates')
           .update({ is_active: false })
-          .eq('tenant_id', this.tenantId);
+          .eq('organization_id', this.tenantId);
       } catch (error) {
         console.error('Error resetting templates:', error);
       }

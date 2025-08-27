@@ -138,7 +138,7 @@ async function handleLeadDeleted(tenantId, leadData) {
           sync_status: 'deleted',
           updated_at: new Date()
         })
-        .eq('tenant_id', tenantId)
+        .eq('organization_id', tenantId)
         .eq('crm_lead_id', leadData.id.toString());
     }
   } catch (error) {

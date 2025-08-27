@@ -52,6 +52,20 @@ class QualificationService {
    * Analyze a conversation to extract qualification data
    */
   async analyzeConversation(messages, leadContext = {}) {
+    // Check if lead is already qualified (don't re-qualify)
+    if (leadContext.leadId) {
+      const existingQualification = await this.getQualification(leadContext.leadId);
+      if (existingQualification && existingQualification.is_qualified) {
+        console.log(`✅ Lead already qualified on ${existingQualification.qualified_at}, skipping re-qualification`);
+        return {
+          ...existingQualification,
+          isQualified: true,
+          alreadyQualified: true,
+          escalationReason: null // Don't re-trigger escalation
+        };
+      }
+    }
+
     const qualification = {
       timeline: null,
       budget: null,
@@ -71,8 +85,12 @@ class QualificationService {
       escalationReason: null
     };
 
+    // Only analyze recent messages (last 10) to avoid old keywords triggering false positives
+    const recentMessages = messages.slice(-10);
+    console.log(`🔍 Analyzing last ${recentMessages.length} messages for qualification (out of ${messages.length} total)`);
+
     // Analyze each message for qualification data
-    for (const message of messages) {
+    for (const message of recentMessages) {
       // Only analyze lead messages (inbound)
       if (message.direction === 'inbound' || message.sender_type === 'lead') {
         const content = (message.content || message.text || '').toLowerCase();
@@ -280,7 +298,7 @@ class QualificationService {
       const { data, error } = await supabase
         .from('lead_qualifications')
         .upsert({
-          tenant_id: this.tenantId,
+          organization_id: this.tenantId,
           lead_id: leadId,
           timeline: qualification.timeline,
           budget: qualification.budget,
@@ -317,7 +335,7 @@ class QualificationService {
       const { data, error } = await supabase
         .from('lead_qualifications')
         .select('*')
-        .eq('tenant_id', this.tenantId)
+        .eq('organization_id', this.tenantId)
         .eq('lead_id', leadId)
         .single();
 

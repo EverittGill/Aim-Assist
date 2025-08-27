@@ -3,6 +3,7 @@ const router = express.Router();
 const ConversationService = require('../services/ConversationService');
 const AIService = require('../services/ai/AIService');
 const CRMFactory = require('../services/crm/CRMFactory');
+const TranslationService = require('../services/TranslationService');
 const TwilioService = require('../services/messaging/TwilioService');
 const { supabase } = require('../config/supabase');
 
@@ -86,12 +87,18 @@ module.exports = (authService) => {
         });
       }
       
+      // Get CRM type for dynamic field lookup
+      const adapter = await CRMFactory.getAdapter(tenantId);
+      const crmType = adapter.crmType || 'fub';
+      const translator = new TranslationService(crmType);
+      const crmIdField = translator.getCRMLeadIdField();
+      
       // Get lead details FROM SUPABASE
       const { data: lead, error: leadError } = await supabase
         .from('leads')
         .select('*')
-        .eq('tenant_id', tenantId)
-        .or(`crm_lead_id.eq.${lead_id},id.eq.${lead_id}`)
+        .eq('organization_id', tenantId)
+        .or(`${crmIdField}.eq.${lead_id},id.eq.${lead_id}`)
         .single();
       
       if (leadError || !lead || !lead.phone) {
@@ -111,7 +118,7 @@ module.exports = (authService) => {
       // Store message in Supabase FIRST (source of truth)
       try {
         const conversationService = new ConversationService(tenantId);
-        const conversation = await conversationService.getOrCreateConversation(lead.crm_lead_id || lead.id);
+        const conversation = await conversationService.getOrCreateConversation(lead[crmIdField] || lead.id);
         await conversationService.addMessage(conversation.id, {
           lead_id: conversation.lead_id,
           direction: 'outbound',
@@ -132,14 +139,13 @@ module.exports = (authService) => {
       
       // Then sync to CRM for visibility (background task)
       try {
-        const adapter = await CRMFactory.getAdapter(tenantId);
-        await adapter.logMessage(lead.crm_lead_id, {
+        await adapter.logMessage(lead[crmIdField], {
           direction: 'outbound',
           content: content,
           from: result.from || process.env.DEMO_TWILIO_FROM_NUMBER,
           to: lead.phone
         });
-        console.log('✅ Message synced to FUB');
+        console.log('✅ Message synced to CRM');
       } catch (crmError) {
         console.error('⚠️ Failed to sync to CRM (will retry):', crmError.message);
         // Could queue for retry here
@@ -176,12 +182,18 @@ module.exports = (authService) => {
         });
       }
       
+      // Get CRM type for dynamic field lookup
+      const adapter = await CRMFactory.getAdapter(tenantId);
+      const crmType = adapter.crmType || 'fub';
+      const translator = new TranslationService(crmType);
+      const crmIdField = translator.getCRMLeadIdField();
+      
       // Get lead details FROM SUPABASE
       const { data: lead, error: leadError } = await supabase
         .from('leads')
         .select('*')
-        .eq('tenant_id', tenantId)
-        .or(`crm_lead_id.eq.${lead_id},id.eq.${lead_id}`)
+        .eq('organization_id', tenantId)
+        .or(`${crmIdField}.eq.${lead_id},id.eq.${lead_id}`)
         .single();
       
       if (leadError || !lead) {

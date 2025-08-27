@@ -7,15 +7,13 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const crypto = require('crypto');
 const { supabase } = require('../../config/supabase');
-const PromptManager = require('./PromptManager');
-const QualificationService = require('../QualificationService');
+const SimpleContextManager = require('../SimpleContextManager');
 
 class ClaudeService {
   constructor(tenantId) {
     this.tenantId = tenantId;
     this.apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
-    this.promptManager = new PromptManager(tenantId);
-    this.qualificationService = new QualificationService(tenantId);
+    this.contextManager = new SimpleContextManager(tenantId);
     
     if (!this.apiKey || this.apiKey === 'sk-ant-your_anthropic_key') {
       console.warn('⚠️ Claude API key not configured - using mock responses');
@@ -52,70 +50,29 @@ class ClaudeService {
       // Set state to processing
       this.setConversationState(leadId, 'PROCESSING');
       
-      // Analyze qualification status
-      const qualification = await this.qualificationService.analyzeConversation(
-        conversationHistory,
-        leadContext
-      );
+      // Get full context using SimpleContextManager
+      const fullContext = await this.contextManager.getFullContext(leadId, currentMessage);
+      console.log(`📚 Context loaded: ${fullContext.messages.length} messages, facts:`, fullContext.facts);
       
-      console.log(`📊 Qualification Score: ${qualification.qualificationScore}%`);
-      console.log(`✅ Completed: ${qualification.completedFields.join(', ') || 'None'}`);
-      console.log(`❓ Missing: ${qualification.missingFields.join(', ') || 'All complete'}`);
-      
-      // Save qualification status
-      if (leadId) {
-        await this.qualificationService.saveQualification(leadId, qualification);
-      }
-      
-      // Build smart context (last 10 messages + key facts)
-      const context = this.buildSmartContext(conversationHistory, leadContext);
-      
-      // Add qualification info to context
-      context.qualification = qualification;
-      context.nextQuestion = qualification.nextQuestion;
-      
-      // Check if lead wants to pause conversation
-      if (qualification.pauseRequested) {
-        console.log(`😴 Lead requested pause (sleep/busy)`);
+      // Check if we need to escalate based on keywords
+      if (this.needsEscalation(currentMessage)) {
+        console.log('🎯 Escalation keyword detected');
         this.setConversationState(leadId, 'WAITING');
         
+        const agentName = process.env.AGENT_NAME || 'Everitt';
         return {
-          message: "No problem! Get some rest. I'll follow up tomorrow. Sleep well!",
-          isQualified: false,
-          qualification,
-          shouldPause: true,
-          pauseReason: 'rest_requested'
-        };
-      }
-      
-      // Check if lead is qualified and needs handoff
-      if (qualification.isQualified && qualification.escalationReason) {
-        console.log(`🎯 Lead qualified! Reason: ${qualification.escalationReason}`);
-        
-        // Generate handoff message
-        const handoffMessage = this.qualificationService.generateQualificationFollowUp(
-          qualification,
-          process.env.AGENT_NAME || 'Everitt'
-        );
-        
-        // Set state and return handoff message
-        this.setConversationState(leadId, 'WAITING');
-        
-        return {
-          message: handoffMessage,
+          message: `Perfect! ${agentName} will reach out to you shortly to help with that. Looking forward to speaking with you!`,
           isQualified: true,
-          qualification,
           shouldPause: true
         };
       }
       
-      // Create the prompt with qualification context
-      const prompt = await this.buildPrompt({
-        leadName,
+      // Build the prompt with full context
+      const prompt = this.buildSimplePrompt({
+        leadName: leadName || fullContext.leadInfo?.first_name || 'there',
         currentMessage,
-        context,
-        agencyName,
-        qualification
+        context: fullContext.formatted,
+        agencyName
       });
       
       // Generate response
@@ -146,8 +103,8 @@ class ClaudeService {
    * Build smart context from conversation history
    */
   buildSmartContext(conversationHistory, leadContext) {
-    // Get last 10 messages
-    const recentMessages = conversationHistory.slice(-10);
+    // Get last 50 messages for much better context
+    const recentMessages = conversationHistory.slice(-50);
     
     // Format messages
     const formattedMessages = recentMessages.map(msg => {
@@ -170,7 +127,33 @@ class ClaudeService {
   }
 
   /**
-   * Build the prompt for Claude
+   * Build simple prompt without complex dependencies
+   */
+  buildSimplePrompt({ leadName, currentMessage, context, agencyName }) {
+    const systemPrompt = `You are Eugenia, a friendly AI assistant for ${agencyName}.
+
+CRITICAL RULES:
+1. Keep responses under 160 characters (SMS limit)
+2. NEVER repeat questions that have been answered
+3. Be conversational and helpful
+4. If information is already known, acknowledge it don't ask again
+
+What you already know about this lead:
+${context.knownFacts}`;
+
+    const userPrompt = `Lead Name: ${leadName}
+Previous conversation (${context.messageCount} messages):
+${context.recentConversation}
+
+Lead's current message: "${currentMessage}"
+
+Generate a helpful response. If they've already told you their budget, timeline, or other info, don't ask for it again. Be natural and move the conversation forward.`;
+
+    return { systemPrompt, userPrompt };
+  }
+
+  /**
+   * Build the prompt for Claude (DEPRECATED - kept for compatibility)
    */
   async buildPrompt({ leadName, currentMessage, context, agencyName, qualification }) {
     // Determine the primary goal based on qualification status
@@ -312,6 +295,14 @@ CRITICAL RULES:
    */
   resetConversationState(leadId) {
     this.setConversationState(leadId, 'IDLE');
+  }
+  
+  /**
+   * Clear state for testing
+   */
+  clearState(leadId) {
+    this.conversationStates.delete(leadId);
+    this.recentMessages.delete(leadId);
   }
 
   /**

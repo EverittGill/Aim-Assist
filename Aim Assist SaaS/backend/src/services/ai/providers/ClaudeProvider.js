@@ -9,7 +9,7 @@ class ClaudeProvider {
   constructor(config = {}) {
     this.temperature = config.temperature || 0.7;
     this.maxTokens = config.maxTokens || 100;
-    this.model = config.model || 'claude-3-opus-20240229';
+    this.model = config.model || 'claude-sonnet-4-20250514';
     
     // Initialize Claude if API key is available
     this.apiKey = process.env.ANTHROPIC_API_KEY;

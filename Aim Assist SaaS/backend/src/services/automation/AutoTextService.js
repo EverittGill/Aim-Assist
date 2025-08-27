@@ -219,7 +219,7 @@ class AutoTextService {
       const { data, error } = await supabase
         .from('auto_text_rules')
         .insert([{
-          tenant_id: tenantId,
+          organization_id: tenantId,
           ...rule
         }])
         .select()
@@ -253,7 +253,7 @@ class AutoTextService {
       const { data, error } = await supabase
         .from('auto_text_rules')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('organization_id', tenantId)
         .eq('is_active', true)
         .order('priority', { ascending: true });
       
@@ -275,7 +275,7 @@ class AutoTextService {
       
       // Create or update lead in database
       const lead = await LeadService.create({
-        tenant_id: tenantId,
+        organization_id: tenantId,
         ...leadData
       });
       

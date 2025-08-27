@@ -8,6 +8,8 @@ const express = require('express');
 const router = express.Router();
 const twilio = require('twilio');
 const ConversationService = require('../../services/ConversationService');
+const ConversationSyncService = require('../../services/ConversationSyncService');
+const ContextEnrichmentService = require('../../services/ContextEnrichmentService');
 const CRMFactory = require('../../services/crm/CRMFactory');
 const AIService = require('../../services/ai/AIService');
 const PhoneMatchingService = require('../../services/PhoneMatchingService');
@@ -161,7 +163,7 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
       const { data: existingLead, error: checkError } = await supabase
         .from('leads')
         .select('id')
-        .eq('tenant_id', tenantId)
+        .eq('organization_id', tenantId)
         .eq('crm_lead_id', leadId)
         .single();
       
@@ -176,7 +178,7 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
         const { data: newLead, error: createError } = await supabase
           .from('leads')
           .insert({
-            tenant_id: tenantId,
+            organization_id: tenantId,
             crm_lead_id: leadId,
             crm_type: 'followupboss',
             first_name: crmLead.first_name || 'Unknown',
@@ -203,13 +205,59 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
     
     const conversationService = new ConversationService(tenantId);
     
-    // Get or create conversation - use CRM lead ID
+    // Get or create conversation FIRST (needed for message storage)
     const conversation = await conversationService.getOrCreateConversation(leadId);
     
     if (!conversation || !conversation.id) {
       console.error('❌ Failed to get/create conversation for lead:', leadId);
       throw new Error(`Cannot process message without valid conversation for lead ${leadId}`);
     }
+    
+    // Sync CRM messages and get enrichment
+    let enrichedContext = {};
+    try {
+      console.log(`🔄 Syncing and enriching context for lead ${leadId}...`);
+      const syncService = new ConversationSyncService(tenantId);
+      await syncService.syncConversationBeforeAI(leadId);
+      
+      const contextService = new ContextEnrichmentService(tenantId);
+      enrichedContext = await contextService.getEnrichedContext(leadId);
+      console.log(`✅ Context enrichment successful`);
+    } catch (enrichError) {
+      console.error('⚠️ Enrichment failed, continuing with basic context:', enrichError.message);
+      // Continue with empty enrichedContext - don't fail the whole webhook
+    }
+    
+    // Get previous extraction results from database (if available)
+    let previousExtraction = null;
+    if (supabase) {
+      // Need to get the Supabase lead ID first for extraction lookup
+      const { data: dbLead } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('organization_id', tenantId)
+        .eq('crm_lead_id', leadId)
+        .single();
+      
+      if (dbLead) {
+        const { data: lastExtraction } = await supabase
+          .from('extraction_logs')
+          .select('*')
+          .eq('organization_id', tenantId)
+          .eq('lead_id', dbLead.id)  // Use Supabase UUID
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        previousExtraction = lastExtraction?.extraction_data || null;
+        if (previousExtraction) {
+          console.log(`📊 Using previous extraction with ${Math.round((previousExtraction.overallConfidence || 0) * 100)}% confidence`);
+        }
+      }
+    }
+    
+    // Add extraction data to enrichedContext
+    enrichedContext.extraction = previousExtraction;
     
     // Add incoming message to conversation
     await conversationService.addMessage(conversation.id, {
@@ -246,7 +294,7 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
       console.error('Error logging to FUB:', fubError.message);
     }
     
-    // Queue extraction job
+    // Queue extraction job with enriched context
     await queueManager.queueExtraction({
       tenantId,
       leadId,
@@ -255,7 +303,8 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
       trigger: 'incoming_sms',
       options: {
         confidenceThreshold: 0.7,
-        autoUpdateThreshold: 0.85
+        autoUpdateThreshold: 0.85,
+        enrichedContext: enrichedContext  // Pass the enriched context we fetched
       }
     });
     
@@ -267,7 +316,7 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
     
     if (shouldRespond) {
       console.log(`🚀 Generating AI response for lead ${leadId} in tenant ${tenantId}`);
-      await generateAndQueueAIResponse(tenantId, leadId, conversation.id, messageContent);
+      await generateAndQueueAIResponse(tenantId, leadId, conversation.id, messageContent, enrichedContext);
     } else {
       console.log(`⏸️ AI not responding (ai_enabled: ${conversation.ai_enabled}, status: ${conversation.status})`);
     }
@@ -280,7 +329,7 @@ async function processLeadMessage(tenantId, leadId, messageContent, twilioSid, p
 /**
  * Generate and queue AI response with Claude
  */
-async function generateAndQueueAIResponse(tenantId, leadId, conversationId, currentMessage) {
+async function generateAndQueueAIResponse(tenantId, leadId, conversationId, currentMessage, enrichedContext) {
   console.log(`\n🔄 generateAndQueueAIResponse called:`, {
     tenantId,
     leadId,
@@ -294,10 +343,10 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
     const claudeService = new ClaudeService(tenantId);
     console.log(`✅ Claude service initialized for tenant ${tenantId}`);
     
-    // Get conversation history (limited for context)
+    // Get full conversation from Supabase (already synced in processLeadMessage)
     console.log(`📖 Getting conversation history for lead ${leadId}...`);
-    const messages = await conversationService.getHistory(leadId, 50);
-    console.log(`📖 Got ${messages.length} messages from conversation history`);
+    const messages = await conversationService.getHistory(leadId, 100);
+    console.log(`📖 Got ${messages.length} messages from Supabase (source of truth)`);
     
     // Get lead details from SUPABASE
     console.log(`🔍 Fetching lead details from Supabase for lead ${leadId}...`);
@@ -307,7 +356,7 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
     let { data: lead, error: leadError } = await supabase
       .from('leads')
       .select('*')
-      .eq('tenant_id', tenantId)
+      .eq('organization_id', tenantId)
       .eq('crm_lead_id', leadId)
       .single();
     
@@ -316,7 +365,7 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
       const result = await supabase
         .from('leads')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('organization_id', tenantId)
         .eq('id', leadId)
         .single();
       lead = result.data;
@@ -347,20 +396,36 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
       template: 'conversation_reply'
     };
     
-    // Generate AI response using Claude
-    console.log(`📝 Calling Claude with context for lead ${leadId}...`);
+    // Generate AI response using Claude with full enriched context
+    console.log(`📝 Calling Claude with enriched context for lead ${leadId}...`);
     const response = await claudeService.generateResponse({
       leadId,
-      leadName: context.lead.name,
+      leadName: lead.first_name || context.lead.name,
       currentMessage,
-      conversationHistory: context.conversation,
+      conversationHistory: messages,  // Full history from Supabase
       leadContext: {
-        source: context.lead.source,
-        tags: context.lead.tags,
+        // Supabase lead data
+        source: lead.source || context.lead.source,
+        tags: lead.tags || context.lead.tags || [],
         timeline: lead.custom_fields?.timeline,
         budget: lead.custom_fields?.budget,
         location: lead.custom_fields?.location,
-        propertyType: lead.custom_fields?.property_type
+        propertyType: lead.custom_fields?.property_type,
+        // Enriched CRM data
+        ...enrichedContext.profile,
+        ...enrichedContext.financial,
+        ...enrichedContext.timeline,
+        propertyInterests: enrichedContext.propertyInterests,
+        behaviorMetrics: enrichedContext.behavior,
+        // Previous extraction results
+        extractedData: enrichedContext.extraction ? {
+          timeline: enrichedContext.extraction.timeline,
+          budget: enrichedContext.extraction.budget,
+          agentStatus: enrichedContext.extraction.agentStatus,
+          financing: enrichedContext.extraction.financing,
+          motivation: enrichedContext.extraction.motivation,
+          qualificationScore: enrichedContext.extraction.overallConfidence
+        } : null
       },
       agencyName: process.env.USER_AGENCY_NAME || 'our team'
     });
@@ -396,29 +461,6 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
       });
       
       console.log(`🤖 Claude AI response queued for lead ${leadId}: "${messageText.substring(0, 50)}..."`);
-      
-      // Log AI response to FUB IMMEDIATELY (before SMS is sent)
-      try {
-        const adapter = await CRMFactory.getAdapter(tenantId);
-        // Get tenant's actual phone number, not hardcoded
-        const fromPhone = await TenantPhoneService.getTenantPrimaryPhone(tenantId) || 
-                         process.env.TWILIO_FROM_NUMBER || '+18662981158';
-        
-        const logged = await adapter.logMessage(leadId, {
-          direction: 'outbound',
-          content: messageText,
-          from: fromPhone,
-          to: leadPhone
-        });
-        
-        if (logged) {
-          console.log('✅ AI response logged to FUB');
-        } else {
-          console.log('⚠️ Failed to log AI response to FUB');
-        }
-      } catch (fubError) {
-        console.error('Error logging AI response to FUB:', fubError.message);
-      }
       
       // Handle qualified lead
       if (isQualified && shouldPause) {
@@ -458,16 +500,26 @@ async function generateAndQueueAIResponse(tenantId, leadId, conversationId, curr
       }
       
       // Log AI response to conversation
+      // Extract just the message text if response is an object
+      const messageContent = typeof response === 'object' && response.message 
+        ? response.message 
+        : response;
+      
       await conversationService.addMessage(conversationId, {
-        lead_id: leadId,
+        lead_id: lead.id,  // Use Supabase UUID from lead object
         direction: 'outbound',
         message_type: 'text',
         sender_type: 'ai',
-        content: response,
+        content: messageContent,  // Store only the message text
         channel_type: 'sms',
         metadata: {
           ai_provider: 'claude',
-          generated_at: new Date().toISOString()
+          generated_at: new Date().toISOString(),
+          // Store qualification data separately in metadata if needed
+          ...(typeof response === 'object' && response.isQualified ? {
+            qualification: response.qualification,
+            isQualified: response.isQualified
+          } : {})
         }
       });
     }

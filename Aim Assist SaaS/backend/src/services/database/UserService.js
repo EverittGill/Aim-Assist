@@ -40,7 +40,7 @@ class UserService {
 
       // If tenantId provided, filter by it
       if (tenantId) {
-        query = query.eq('tenant_id', tenantId);
+        query = query.eq('organization_id', tenantId);
       }
 
       const { data, error } = await query.single();
@@ -299,7 +299,7 @@ class UserService {
       const { data, error } = await this.supabase
         .from('users')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('organization_id', tenantId)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 

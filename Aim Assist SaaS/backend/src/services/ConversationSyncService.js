@@ -35,12 +35,26 @@ class ConversationSyncService {
       
       console.log(`📥 Found ${crmMessages.length} messages in CRM`);
       
+      // Convert CRM lead ID to Supabase UUID
+      const { data: dbLead } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('organization_id', this.tenantId)
+        .eq('crm_lead_id', leadId)
+        .single();
+      
+      const dbLeadId = dbLead?.id;
+      if (!dbLeadId) {
+        console.error(`Lead ${leadId} not found in Supabase for tenant ${this.tenantId}`);
+        return { messages: [], hasHumanActivity: false };
+      }
+      
       // Get existing messages from Supabase
       const { data: existingMessages, error } = await supabase
         .from('messages')
         .select('external_id, crm_message_id')
-        .eq('tenant_id', this.tenantId)
-        .eq('lead_id', leadId);
+        .eq('organization_id', this.tenantId)
+        .eq('lead_id', dbLeadId);
       
       if (error) {
         console.error('Error fetching existing messages:', error);
@@ -73,8 +87,8 @@ class ConversationSyncService {
       // Store new messages in Supabase
       if (newMessages.length > 0) {
         const messagesToInsert = newMessages.map(msg => ({
-          tenant_id: this.tenantId,
-          lead_id: leadId,
+          organization_id: this.tenantId,
+          lead_id: dbLeadId,
           crm_message_id: msg.id,
           external_id: msg.external_id,
           direction: msg.direction,
@@ -101,9 +115,16 @@ class ConversationSyncService {
         }
       }
       
-      // Return full conversation history and human activity flag
+      // Return messages FROM SUPABASE (source of truth), not CRM
+      const { data: supabaseMessages } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('organization_id', this.tenantId)
+        .eq('lead_id', dbLeadId)
+        .order('created_at', { ascending: true });
+      
       return {
-        messages: crmMessages,
+        messages: supabaseMessages || [],
         hasHumanActivity,
         humanMessages: recentHumanMessages
       };
@@ -163,7 +184,7 @@ class ConversationSyncService {
       const { data: savedMessage, error } = await supabase
         .from('messages')
         .insert({
-          tenant_id: this.tenantId,
+          organization_id: this.tenantId,
           lead_id: leadId,
           direction: 'outbound',
           sender_type: message.sender_type || 'ai',
@@ -217,7 +238,7 @@ class ConversationSyncService {
     const { data: messages, error } = await supabase
       .from('messages')
       .select('*')
-      .eq('tenant_id', this.tenantId)
+      .eq('organization_id', this.tenantId)
       .eq('lead_id', leadId)
       .order('created_at', { ascending: false })
       .limit(100);

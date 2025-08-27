@@ -343,14 +343,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
       await supabase
         .from('phone_numbers')
         .update({ is_active: false })
-        .eq('tenant_id', tenantId)
+        .eq('organization_id', tenantId)
         .eq('is_primary', true);
       
       // Create new phone number mapping
       const { error: phoneError } = await supabase
         .from('phone_numbers')
         .insert({
-          tenant_id: tenantId,
+          organization_id: tenantId,
           phone_number: newTwilioPhone,
           provider: 'twilio',
           type: newTwilioPhone.startsWith('+1866') || newTwilioPhone.startsWith('+1855') || newTwilioPhone.startsWith('+1844') || newTwilioPhone.startsWith('+1833') ? 'toll_free' : 'local',

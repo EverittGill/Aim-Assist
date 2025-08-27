@@ -69,7 +69,7 @@ class TenantPhoneService {
       const { data, error } = await supabase
         .from('phone_numbers')
         .select('phone_number, capabilities')
-        .eq('tenant_id', tenantId)
+        .eq('organization_id', tenantId)
         .eq('is_primary', true)
         .eq('is_active', true)
         .single();
@@ -79,7 +79,7 @@ class TenantPhoneService {
         const { data: fallback } = await supabase
           .from('phone_numbers')
           .select('phone_number, capabilities')
-          .eq('tenant_id', tenantId)
+          .eq('organization_id', tenantId)
           .eq('is_active', true)
           .not('capabilities->sms', 'is', false)
           .limit(1)
@@ -128,7 +128,7 @@ class TenantPhoneService {
         await supabase
           .from('phone_numbers')
           .update({ is_primary: false })
-          .eq('tenant_id', tenantId);
+          .eq('organization_id', tenantId);
       }
 
       // Insert or update phone assignment
@@ -147,7 +147,7 @@ class TenantPhoneService {
             updated_at: new Date()
           })
           .eq('phone_number', normalizedPhone)
-          .eq('tenant_id', tenantId)
+          .eq('organization_id', tenantId)
           .select()
           .single();
         
@@ -164,7 +164,7 @@ class TenantPhoneService {
           .from('phone_numbers')
           .insert({
             phone_number: normalizedPhone,
-            tenant_id: tenantId,
+            organization_id: tenantId,
             is_primary: isPrimary,
             provider_sid: twilioSid,
             capabilities: capabilities,
@@ -197,7 +197,7 @@ class TenantPhoneService {
       const { data, error } = await supabase
         .from('phone_numbers')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('organization_id', tenantId)
         .order('is_primary', { ascending: false });
 
       if (error) throw error;
@@ -220,7 +220,7 @@ class TenantPhoneService {
         .from('phone_numbers')
         .delete()
         .eq('phone_number', this.normalizePhone(phoneNumber))
-        .eq('tenant_id', tenantId);
+        .eq('organization_id', tenantId);
 
       if (error) throw error;
 
@@ -244,7 +244,7 @@ class TenantPhoneService {
       const { data, error } = await supabase
         .from('phone_numbers')
         .select('id')
-        .eq('tenant_id', tenantId)
+        .eq('organization_id', tenantId)
         .eq('phone_number', this.normalizePhone(phoneNumber))
         .eq('is_active', true)
         .single();

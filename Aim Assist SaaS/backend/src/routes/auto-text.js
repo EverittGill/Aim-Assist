@@ -6,14 +6,15 @@
 const express = require('express');
 const router = express.Router();
 const AutoTextRulesService = require('../services/AutoTextRulesService');
+const { authenticateToken } = require('../middleware/auth');
 
 /**
  * Get all rules for tenant
  * GET /api/auto-text/rules
  */
-router.get('/rules', async (req, res) => {
+router.get('/rules', authenticateToken, async (req, res) => {
   try {
-    const tenantId = req.query.tenant_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const tenantId = req.tenantId || req.query.tenant_id;
     
     const rules = await AutoTextRulesService.getRules(tenantId);
     
@@ -35,9 +36,9 @@ router.get('/rules', async (req, res) => {
  * Create a new rule
  * POST /api/auto-text/rules
  */
-router.post('/rules', async (req, res) => {
+router.post('/rules', authenticateToken, async (req, res) => {
   try {
-    const tenantId = req.body.tenant_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const tenantId = req.tenantId || req.body.tenant_id;
     
     const rule = await AutoTextRulesService.createRule(tenantId, req.body);
     
@@ -136,9 +137,9 @@ router.post('/rules/:id/test', async (req, res) => {
  * Create default safe rules for testing
  * POST /api/auto-text/create-defaults
  */
-router.post('/create-defaults', async (req, res) => {
+router.post('/create-defaults', authenticateToken, async (req, res) => {
   try {
-    const tenantId = req.body.tenant_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const tenantId = req.tenantId || req.body.tenant_id;
     
     const defaultRules = [
       {
@@ -210,9 +211,9 @@ router.post('/create-defaults', async (req, res) => {
  * Apply rules to existing leads (manual trigger)
  * POST /api/auto-text/apply-to-existing
  */
-router.post('/apply-to-existing', async (req, res) => {
+router.post('/apply-to-existing', authenticateToken, async (req, res) => {
   try {
-    const tenantId = req.body.tenant_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const tenantId = req.tenantId || req.body.tenant_id;
     const leadIds = req.body.lead_ids; // Optional: specific leads to check
     const tag = req.body.tag; // Optional: only check leads with this tag
     
@@ -225,7 +226,7 @@ router.post('/apply-to-existing', async (req, res) => {
     let query = supabase
       .from('leads')
       .select('*')
-      .eq('tenant_id', tenantId)
+      .eq('organization_id', tenantId)
       .eq('ai_status', 'inactive'); // Only check inactive leads
     
     if (leadIds && leadIds.length > 0) {
@@ -271,9 +272,9 @@ router.post('/apply-to-existing', async (req, res) => {
  * Get rule statistics
  * GET /api/auto-text/stats
  */
-router.get('/stats', async (req, res) => {
+router.get('/stats', authenticateToken, async (req, res) => {
   try {
-    const tenantId = req.query.tenant_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const tenantId = req.tenantId || req.query.tenant_id;
     
     const { supabase } = require('../config/supabase');
     if (!supabase) {
@@ -284,7 +285,7 @@ router.get('/stats', async (req, res) => {
     const { data: rules, error: rulesError } = await supabase
       .from('auto_text_rules')
       .select('id, name, is_active, sends_count, responses_count, response_rate')
-      .eq('tenant_id', tenantId);
+      .eq('organization_id', tenantId);
     
     if (rulesError) throw rulesError;
     
@@ -295,7 +296,7 @@ router.get('/stats', async (req, res) => {
     const { data: todayApps, error: appsError } = await supabase
       .from('auto_text_applications')
       .select('rule_id, status')
-      .eq('tenant_id', tenantId)
+      .eq('organization_id', tenantId)
       .gte('created_at', startOfDay.toISOString());
     
     if (appsError) throw appsError;

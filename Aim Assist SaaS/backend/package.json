@@ -14,10 +14,10 @@
     "test:db": "node test-supabase.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.17.0",
+    "@anthropic-ai/sdk": "^0.17.2",
     "@google/generative-ai": "^0.7.1",
     "@supabase/supabase-js": "^2.39.3",
-    "axios": "^1.6.5",
+    "axios": "^1.11.0",
     "bcryptjs": "^2.4.3",
     "bull": "^4.16.5",
     "cors": "^2.8.5",
@@ -30,7 +30,7 @@
     "openai": "^4.24.7",
     "redis": "^4.7.1",
     "stripe": "^14.11.0",
-    "twilio": "^4.20.0",
+    "twilio": "^4.23.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

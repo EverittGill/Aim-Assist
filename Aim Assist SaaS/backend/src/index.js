@@ -60,6 +60,7 @@ app.use('/api/billing', require('./routes/billing'));
 app.use('/api/sync', require('./routes/sync')); // CRM sync management
 app.use('/api/auto-text', require('./routes/auto-text')); // Auto-text rules management
 app.use('/api/prompts', require('./routes/prompts')); // AI prompt customization
+app.use('/api/tag-poll', require('./routes/tagPolling')); // Tag-based lead polling
 
 // Development helper endpoint
 app.use('/api/dev', require('./routes/frontend-status'));

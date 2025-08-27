@@ -22,7 +22,7 @@ class PromptManager {
       const { data: customPrompts, error } = await supabase
         .from('ai_prompts')
         .select('*')
-        .eq('tenant_id', this.tenantId)
+        .eq('organization_id', this.tenantId)
         .eq('is_active', true);
 
       if (error) {
@@ -222,7 +222,7 @@ Message:`,
     const { data } = await supabase
       .from('tenant_settings')
       .select('escalation_keywords')
-      .eq('tenant_id', this.tenantId)
+      .eq('organization_id', this.tenantId)
       .single();
 
     return data?.escalation_keywords || [
@@ -250,7 +250,7 @@ Message:`,
       const { data, error } = await supabase
         .from('ai_prompts')
         .upsert({
-          tenant_id: this.tenantId,
+          organization_id: this.tenantId,
           prompt_key: key,
           template: template,
           variables: variables,
@@ -320,7 +320,7 @@ Message:`,
       const { error } = await supabase
         .from('ai_prompts')
         .update({ is_active: false })
-        .eq('tenant_id', this.tenantId)
+        .eq('organization_id', this.tenantId)
         .eq('prompt_key', key);
 
       if (error) throw error;

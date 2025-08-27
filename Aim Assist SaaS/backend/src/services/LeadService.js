@@ -7,6 +7,7 @@
 
 const { supabase, withTenantContext } = require('../config/supabase');
 const CRMFactory = require('./crm/CRMFactory');
+const TranslationService = require('./TranslationService');
 
 class LeadService {
   /**
@@ -16,6 +17,8 @@ class LeadService {
     try {
       // Get CRM adapter for tenant
       const adapter = await CRMFactory.getAdapter(tenantId);
+      const crmType = adapter.crmType || 'fub';
+      const translator = new TranslationService(crmType);
       
       // Fetch all leads from CRM
       const crmLeads = await adapter.getLeads({ limit: 500 });
@@ -24,23 +27,13 @@ class LeadService {
       let updated = 0;
       
       // Upsert each lead to local database
-      for (const lead of crmLeads) {
-        const existing = await this.getByPhone(tenantId, lead.phone);
+      for (const crmLead of crmLeads) {
+        const existing = await this.getByPhone(tenantId, crmLead.phone);
         
-        const leadData = {
-          tenant_id: tenantId,
-          crm_lead_id: lead.crm_lead_id,
-          first_name: lead.first_name,
-          last_name: lead.last_name,
-          email: lead.email,
-          phone: lead.phone,
-          source: lead.source,
-          tags: lead.tags,
-          stage: lead.stage,
-          assigned_to: lead.assigned_to,
-          crm_data: lead.crm_data,
-          last_synced_at: new Date()
-        };
+        // Use translator to convert CRM data to Supabase format
+        const leadData = translator.toSupabase(crmLead);
+        leadData.organization_id = tenantId;
+        leadData.last_synced_at = new Date();
         
         if (existing) {
           await this.update(existing.id, leadData);
@@ -97,7 +90,7 @@ class LeadService {
       if (!supabase) {
         return {
           id: leadId,
-          tenant_id: tenantId,
+          organization_id: tenantId,
           first_name: 'Test',
           last_name: 'Lead',
           phone: '+17068184445',
@@ -186,7 +179,7 @@ class LeadService {
         return [
           {
             id: 'lead-1',
-            tenant_id: tenantId,
+            organization_id: tenantId,
             first_name: 'John',
             last_name: 'Doe',
             phone: '+17068184445',
@@ -196,7 +189,7 @@ class LeadService {
           },
           {
             id: 'lead-2',
-            tenant_id: tenantId,
+            organization_id: tenantId,
             first_name: 'Jane',
             last_name: 'Smith',
             phone: '+19045551234',
@@ -210,7 +203,7 @@ class LeadService {
       let query = supabase
         .from('leads')
         .select('*')
-        .eq('tenant_id', tenantId);
+        .eq('organization_id', tenantId);
       
       // Apply filters
       if (filters.ai_status) {

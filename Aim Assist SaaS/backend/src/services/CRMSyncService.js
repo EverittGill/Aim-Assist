@@ -6,11 +6,13 @@
 
 const { supabase } = require('../config/supabase');
 const CRMFactory = require('./crm/CRMFactory');
+const TranslationService = require('./TranslationService');
 
 class CRMSyncService {
   constructor(tenantId) {
     this.tenantId = tenantId;
     this.batchSize = 100; // Process in batches for efficiency
+    this.translator = null; // Will be initialized when we get CRM type
     this.syncStats = {
       fetched: 0,
       created: 0,
@@ -29,6 +31,8 @@ class CRMSyncService {
     
     try {
       const adapter = await CRMFactory.getAdapter(this.tenantId);
+      const crmType = adapter.crmType || 'fub';
+      this.translator = new TranslationService(crmType);
       let offset = 0;
       let hasMore = true;
       let totalExpected = 0;
@@ -161,10 +165,11 @@ class CRMSyncService {
           await AutoTextRulesService.checkAndApplyRules(this.tenantId, dbLead);
         }
       } catch (error) {
-        console.error(`Error processing lead ${lead.crm_lead_id}:`, error.message);
+        const leadId = lead.id || lead.fub_lead_id || lead.lofty_lead_id || 'unknown';
+        console.error(`Error processing lead ${leadId}:`, error.message);
         this.syncStats.failed++;
         this.syncStats.errors.push({
-          lead_id: lead.crm_lead_id,
+          lead_id: leadId,
           error: error.message
         });
       }
@@ -175,16 +180,31 @@ class CRMSyncService {
    * Upsert a single lead to the database
    */
   async upsertLead(crmLead) {
-    // Map CRM data to our schema (using Eugenia's proven mapping)
-    const leadData = this.mapCRMLeadToDatabase(crmLead);
+    // Get tenant's CRM type
+    const { data: tenant, error: tenantError } = await supabase
+      .from('organizations')
+      .select('crm_type')
+      .eq('id', this.tenantId)
+      .single();
+    
+    if (tenantError || !tenant) {
+      throw new Error(`Failed to get tenant CRM type: ${tenantError?.message}`);
+    }
+    
+    const crmType = tenant.crm_type || 'fub';
+    
+    // Map CRM data to our schema
+    const leadData = this.mapCRMLeadToDatabase(crmLead, crmType);
+    
+    // Build the query based on CRM type
+    const crmIdField = `${crmType}_lead_id`;
     
     // Check if lead exists
     const { data: existing, error: checkError } = await supabase
       .from('leads')
       .select('id, updated_at')
-      .eq('tenant_id', this.tenantId)
-      .eq('crm_lead_id', leadData.crm_lead_id)
-      .eq('crm_type', leadData.crm_type)
+      .eq('organization_id', this.tenantId)
+      .eq(crmIdField, leadData[crmIdField])
       .single();
     
     if (checkError && checkError.code !== 'PGRST116') {
@@ -205,7 +225,7 @@ class CRMSyncService {
       
       if (updateError) throw updateError;
       this.syncStats.updated++;
-      console.log(`📝 Updated lead: ${leadData.first_name} ${leadData.last_name} (${leadData.crm_lead_id})`);
+      console.log(`📝 Updated lead: ${leadData.first_name} ${leadData.last_name} (${leadData[crmIdField]})`);
       return updated;
     } else {
       // Create new lead
@@ -213,7 +233,7 @@ class CRMSyncService {
         .from('leads')
         .insert({
           ...leadData,
-          tenant_id: this.tenantId,
+          organization_id: this.tenantId,
           created_at: new Date()
         })
         .select()
@@ -221,78 +241,83 @@ class CRMSyncService {
       
       if (insertError) throw insertError;
       this.syncStats.created++;
-      console.log(`✨ Created lead: ${leadData.first_name} ${leadData.last_name} (${leadData.crm_lead_id})`);
+      console.log(`✨ Created lead: ${leadData.first_name} ${leadData.last_name} (${leadData[crmIdField]})`);
       return created;
     }
   }
 
   /**
    * Map CRM lead data to database schema
-   * Uses Eugenia's proven field mapping for comprehensive data capture
+   * Supports multiple CRM types with dynamic field mapping
    */
-  mapCRMLeadToDatabase(crmLead) {
-    // Handle both raw FUB data and pre-mapped data from adapter
-    const fubData = crmLead.crm_data || crmLead;
+  mapCRMLeadToDatabase(crmLead, crmType = 'fub') {
+    // Handle both raw CRM data and pre-mapped data from adapter
+    const crmData = crmLead.crm_data || crmLead;
     
     // Extract primary phone and email
-    const primaryPhone = this.extractPrimaryPhone(fubData);
-    const secondaryPhone = this.extractSecondaryPhone(fubData);
-    const primaryEmail = this.extractPrimaryEmail(fubData);
+    const primaryPhone = this.extractPrimaryPhone(crmData);
+    const secondaryPhone = this.extractSecondaryPhone(crmData);
+    const primaryEmail = this.extractPrimaryEmail(crmData);
     
-    // Extract full name
-    const fullName = fubData.name || 
-                    `${fubData.firstName || ''} ${fubData.lastName || ''}`.trim() ||
+    // Extract full name (handle different CRM field names)
+    const fullName = crmData.name || 
+                    `${crmData.firstName || crmData.first_name || ''} ${crmData.lastName || crmData.last_name || ''}`.trim() ||
                     `${crmLead.first_name || ''} ${crmLead.last_name || ''}`.trim();
     
     // Map tags (CRITICAL - as user specified)
-    const tags = this.extractTags(fubData);
+    const tags = this.extractTags(crmData);
     
     // Extract custom fields
-    const customFields = this.extractCustomFields(fubData);
+    const customFields = this.extractCustomFields(crmData);
     
-    return {
-      crm_lead_id: (fubData.id || crmLead.crm_lead_id || '').toString(),
-      crm_type: 'followupboss',
-      first_name: fubData.firstName || crmLead.first_name || '',
-      last_name: fubData.lastName || crmLead.last_name || '',
+    // Build the lead data with the correct CRM ID field
+    const leadData = {
+      first_name: crmData.firstName || crmData.first_name || crmLead.first_name || '',
+      last_name: crmData.lastName || crmData.last_name || crmLead.last_name || '',
       full_name: fullName,
       email: primaryEmail,
       phone: this.normalizePhone(primaryPhone),
       phone_secondary: this.normalizePhone(secondaryPhone),
-      source: fubData.source || crmLead.source || 'Unknown',
+      source: crmData.source || crmLead.source || 'Unknown',
       tags: tags,
-      stage: fubData.stage || crmLead.stage || null,
-      status: this.mapStageToStatus(fubData.stage),
-      assigned_user_crm_id: (fubData.assignedUserId || '').toString(),
-      background: fubData.background || '',
-      notes: fubData.background || crmLead.notes || '',
-      source_url: fubData.sourceUrl || null,
-      addresses: fubData.addresses || [],
-      last_communication: fubData.lastCommunication || {},
-      crm_created_at: fubData.created ? new Date(fubData.created) : null,
-      crm_updated_at: fubData.updated ? new Date(fubData.updated) : null,
+      stage: crmData.stage || crmLead.stage || null,
+      status: this.mapStageToStatus(crmData.stage),
+      assigned_user_crm_id: (crmData.assignedUserId || crmData.assigned_user_id || '').toString(),
+      background: crmData.background || '',
+      notes: crmData.background || crmLead.notes || '',
+      source_url: crmData.sourceUrl || crmData.source_url || null,
+      addresses: crmData.addresses || [],
+      last_communication: crmData.lastCommunication || crmData.last_communication || {},
+      crm_created_at: crmData.created ? new Date(crmData.created) : null,
+      crm_updated_at: crmData.updated ? new Date(crmData.updated) : null,
       custom_fields: customFields,
       metadata: {
-        sourceUrl: fubData.sourceUrl,
-        ylopoStarsLink: this.extractYlopoLink(fubData),
-        lastCommunication: fubData.lastCommunication,
-        phones: fubData.phones || [],
-        emails: fubData.emails || []
+        sourceUrl: crmData.sourceUrl || crmData.source_url,
+        ylopoStarsLink: this.extractYlopoLink(crmData),
+        lastCommunication: crmData.lastCommunication || crmData.last_communication,
+        phones: crmData.phones || [],
+        emails: crmData.emails || []
       },
-      crm_data: fubData,
+      crm_data: crmData,
       last_synced_at: new Date(),
       sync_status: 'synced'
     };
+    
+    // Set the CRM-specific ID field dynamically
+    const crmIdField = `${crmType}_lead_id`;
+    leadData[crmIdField] = (crmData.id || crmLead[crmIdField] || crmLead.id || '').toString();
+    
+    return leadData;
   }
 
   /**
-   * Extract tags from FUB data (CRITICAL)
+   * Extract tags from CRM data (CRITICAL)
    */
-  extractTags(fubData) {
-    if (!fubData.tags) return [];
+  extractTags(crmData) {
+    if (!crmData.tags) return [];
     
     // Tags can be strings or objects with name property
-    return fubData.tags.map(tag => {
+    return crmData.tags.map(tag => {
       if (typeof tag === 'string') return tag;
       if (tag && tag.name) return tag.name;
       return null;
@@ -300,15 +325,15 @@ class CRMSyncService {
   }
 
   /**
-   * Extract custom fields from FUB data
+   * Extract custom fields from CRM data
    */
-  extractCustomFields(fubData) {
-    if (!fubData.customFields || !Array.isArray(fubData.customFields)) {
+  extractCustomFields(crmData) {
+    if (!crmData.customFields || !Array.isArray(crmData.customFields)) {
       return {};
     }
     
     const fields = {};
-    for (const field of fubData.customFields) {
+    for (const field of crmData.customFields) {
       if (field.name && field.value !== undefined) {
         fields[field.name] = field.value;
         
@@ -421,7 +446,7 @@ class CRMSyncService {
     const { data, error } = await supabase
       .from('sync_history')
       .insert({
-        tenant_id: this.tenantId,
+        organization_id: this.tenantId,
         sync_type: syncType,
         sync_status: 'started',
         crm_type: 'followupboss'
@@ -478,7 +503,7 @@ class CRMSyncService {
     const { data, error } = await supabase
       .from('sync_history')
       .select('*')
-      .eq('tenant_id', tenantId)
+      .eq('organization_id', tenantId)
       .order('started_at', { ascending: false })
       .limit(limit);
     

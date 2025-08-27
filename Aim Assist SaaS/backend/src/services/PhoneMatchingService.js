@@ -53,7 +53,7 @@ class PhoneMatchingService {
       const { data: supabaseLead, error: dbError } = await supabase
         .from('leads')
         .select('*')
-        .eq('tenant_id', this.tenantId)  // CRITICAL: Tenant isolation
+        .eq('organization_id', this.tenantId)  // CRITICAL: Tenant isolation
         .or(`phone.ilike.%${normalizedPhone}%,phone_secondary.ilike.%${normalizedPhone}%`)
         .single();
       
@@ -96,7 +96,7 @@ class PhoneMatchingService {
               last_name: crmLead.last_name,
               phone: crmLead.phone,
               tags: crmLead.tags,
-              tenant_id: this.tenantId
+              organization_id: this.tenantId
             },
             source: 'crm_no_sync',
             needsSync: false
@@ -139,7 +139,7 @@ class PhoneMatchingService {
   async syncLeadToSupabase(crmLead) {
     try {
       const leadData = {
-        tenant_id: this.tenantId,
+        organization_id: this.tenantId,
         crm_lead_id: crmLead.crm_lead_id || crmLead.id,
         crm_type: 'followupboss',
         first_name: crmLead.first_name || '',
@@ -293,7 +293,7 @@ class PhoneMatchingService {
       const { data: leads } = await supabase
         .from('leads')
         .select('id, crm_lead_id, phone, full_name')
-        .eq('tenant_id', this.tenantId)
+        .eq('organization_id', this.tenantId)
         .not('phone', 'is', null);
       
       console.log(`🔍 Verifying ${leads.length} leads...`);

@@ -27,9 +27,12 @@ class CRMFactory {
     try {
       // For MVP, use demo tenant credentials from env when Supabase isn't available
       // or for the primary test tenant or Everitt's tenant
+      // Also handle numeric tenant ID 1 and our organization ID
       if (tenantId === 'demo-tenant' || !supabase || 
           tenantId === '7c563f31-36bd-4414-ad44-ef9c19c1c6b1' ||
-          tenantId === 'e5669fe6-a161-4628-89e3-4b8e01f663b8') {
+          tenantId === 'e5669fe6-a161-4628-89e3-4b8e01f663b8' ||
+          tenantId === 1 || tenantId === '1' ||
+          tenantId === '655cd229-b2e9-4737-843b-7488fe9d33e6') {
         console.log('Using FUB configuration from environment');
         const FollowUpBossAdapter = require('./adapters/FollowUpBossAdapter');
         
@@ -65,10 +68,19 @@ class CRMFactory {
         throw new Error(`Unsupported CRM type: ${integration.crm_type}`);
       }
 
-      // Get credentials - use direct credentials if no vault_secret_id
+      // Get credentials - handle encrypted credentials from crm_configs table
       let credentials;
-      if (integration.credentials) {
-        // Use credentials directly from database (for MVP)
+      if (integration.credentials_encrypted) {
+        // Parse encrypted credentials (they're stored as JSON string)
+        const parsed = JSON.parse(integration.credentials_encrypted);
+        // Transform credential keys to match adapter expectations
+        credentials = {
+          api_key: parsed.apiKey || parsed.api_key,
+          x_system: integration.config?.x_system || parsed.xSystem || parsed.x_system,
+          x_system_key: parsed.xSystemKey || parsed.x_system_key
+        };
+      } else if (integration.credentials) {
+        // Use credentials directly from database (legacy)
         credentials = integration.credentials;
       } else {
         // Decrypt from vault if available
@@ -79,6 +91,7 @@ class CRMFactory {
       const config = {
         credentials,
         fieldMappings: integration.field_mappings,
+        settings: integration.config || {},
         ...integration.config
       };
 
@@ -108,10 +121,11 @@ class CRMFactory {
       };
     }
 
+    // Check crm_configs table
     const { data, error } = await supabase
-      .from('crm_integrations')
+      .from('crm_configs')
       .select('*')
-      .eq('tenant_id', tenantId)
+      .eq('organization_id', tenantId)
       .eq('is_active', true)
       .single();
 
