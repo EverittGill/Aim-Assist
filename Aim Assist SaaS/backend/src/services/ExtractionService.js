@@ -14,8 +14,10 @@ const {
 } = require('../schemas/extraction.schemas');
 
 class ExtractionService {
-  constructor(tenantId, config = {}) {
-    this.tenantId = tenantId;
+  constructor(organizationId, config = {}) {
+    // Compatibility layer during migration
+    this.organizationId = organizationId;
+    this.organizationId = organizationId; // Keep for backward compatibility
     this.anthropic = new Anthropic({
       apiKey: config.claudeApiKey || process.env.CLAUDE_API_KEY
     });

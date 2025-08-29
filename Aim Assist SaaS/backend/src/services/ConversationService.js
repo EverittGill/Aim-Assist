@@ -7,8 +7,10 @@
 const { supabase } = require('../config/supabase');
 
 class ConversationService {
-  constructor(tenantId) {
-    this.tenantId = tenantId;
+  constructor(organizationId) {
+    // Compatibility layer during migration
+    this.organizationId = organizationId;
+    this.organizationId = organizationId; // Keep for backward compatibility
   }
 
   /**
@@ -54,7 +56,7 @@ class ConversationService {
         const { data: lead, error } = await supabase
           .from('leads')
           .select('id')
-          .eq('organization_id', this.tenantId)
+          .eq('organization_id', this.organizationId)
           .eq('id', leadId)
           .single();
           
@@ -66,7 +68,7 @@ class ConversationService {
         const { data: lead, error: leadError } = await supabase
           .from('leads')
           .select('id')
-          .eq('organization_id', this.tenantId)
+          .eq('organization_id', this.organizationId)
           .or(`fub_lead_id.eq.${leadId},lofty_lead_id.eq.${leadId}`)
           .single();
         
@@ -81,7 +83,7 @@ class ConversationService {
       let { data: conversation, error } = await supabase
         .from('conversations')
         .select('*')
-        .eq('organization_id', this.tenantId)
+        .eq('organization_id', this.organizationId)
         .eq('lead_id', dbLeadId)
         .single();
       
@@ -90,7 +92,7 @@ class ConversationService {
         const result = await supabase
           .from('conversations')
           .insert([{
-            organization_id: this.tenantId,
+            organization_id: this.organizationId,
             lead_id: dbLeadId,
             status: 'active',
             ai_enabled: true,
@@ -126,7 +128,7 @@ class ConversationService {
         const mockMessage = {
           id: 'msg-' + Date.now(),
           conversation_id: conversationId,
-          organization_id: this.tenantId,
+          organization_id: this.organizationId,
           ...messageData,
           created_at: new Date()
         };
@@ -136,7 +138,7 @@ class ConversationService {
       
       const messageToInsert = {
         conversation_id: conversationId,
-        organization_id: this.tenantId,
+        organization_id: this.organizationId,
         ...messageData
       };
       
@@ -224,7 +226,7 @@ class ConversationService {
         return [
           {
             id: 'conv-1',
-            organization_id: this.tenantId,
+            organization_id: this.organizationId,
             lead: { first_name: 'John', last_name: 'Doe' },
             status: 'active',
             message_count: 5,
@@ -245,7 +247,7 @@ class ConversationService {
             email
           )
         `)
-        .eq('organization_id', this.tenantId);
+        .eq('organization_id', this.organizationId);
       
       if (filters.status) {
         query = query.eq('status', filters.status);

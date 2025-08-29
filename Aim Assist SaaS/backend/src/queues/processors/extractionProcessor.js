@@ -18,7 +18,8 @@ async function processExtractionJob(job) {
   
   try {
     const { 
-      tenantId, 
+      organizationId,
+      tenantId, // Accept both during migration
       leadId, 
       conversationId,
       currentMessage,
@@ -26,17 +27,20 @@ async function processExtractionJob(job) {
       options = {}
     } = job.data;
     
-    console.log(`🔍 Processing extraction job for lead ${leadId}, tenant ${tenantId}`);
+    // Use organizationId if provided, fallback to tenantId
+    const orgId = organizationId || tenantId;
+    
+    console.log(`🔍 Processing extraction job for lead ${leadId}, organization ${orgId}`);
     
     // Initialize services
-    const extractionService = new ExtractionService(tenantId, {
+    const extractionService = new ExtractionService(orgId, {
       claudeApiKey: process.env.CLAUDE_API_KEY,
       confidenceThreshold: options.confidenceThreshold || 0.7,
       autoUpdateThreshold: options.autoUpdateThreshold || 0.85
     });
     
-    const contextService = new ContextEnrichmentService(tenantId);
-    const conversationService = new ConversationService(tenantId);
+    const contextService = new ContextEnrichmentService(orgId);
+    const conversationService = new ConversationService(orgId);
     
     // Get conversation history
     const messages = await conversationService.getHistory(leadId, 100);
@@ -55,7 +59,7 @@ async function processExtractionJob(job) {
     // Build extraction context
     const extractionContext = {
       leadId,
-      tenantId,
+      organizationId: orgId, // Use orgId
       conversation: formattedMessages,
       currentMessage: currentMessage || formattedMessages[formattedMessages.length - 1]?.content,
       leadProfile: {
@@ -80,7 +84,7 @@ async function processExtractionJob(job) {
     
     // Log extraction to database
     await logExtraction({
-      tenantId,
+      organizationId: orgId, // Use orgId
       leadId,
       conversationId,
       extraction: result.extraction,
@@ -91,7 +95,7 @@ async function processExtractionJob(job) {
     
     // Update CRM if confidence is high enough
     if (result.shouldAutoUpdate) {
-      const adapter = await CRMFactory.getAdapter(tenantId);
+      const adapter = await CRMFactory.getAdapter(orgId); // Use orgId
       const updateSuccess = await extractionService.updateCRM(
         leadId,
         result.extraction,
@@ -100,6 +104,23 @@ async function processExtractionJob(job) {
       
       if (updateSuccess) {
         console.log(`✅ CRM auto-updated for lead ${leadId}`);
+        
+        // Notify agent if highly qualified
+        if (result.extraction.overallConfidence > 0.85) {
+          const NotificationService = require('../../services/NotificationService');
+          const notificationService = new NotificationService(orgId);
+          
+          try {
+            await notificationService.notifyAgentOfQualifiedLead(
+              leadId,
+              result.extraction,
+              enrichedContext.profile
+            );
+            console.log(`📱 Agent notified of qualified lead ${leadId}`);
+          } catch (notifyError) {
+            console.error('Failed to notify agent:', notifyError.message);
+          }
+        }
       } else {
         console.log(`⚠️ CRM update failed for lead ${leadId}`);
       }
@@ -109,7 +130,7 @@ async function processExtractionJob(job) {
       // Queue for manual review if needed
       if (result.extraction.overallConfidence < 0.5) {
         await queueManualReview({
-          tenantId,
+          organizationId,
           leadId,
           extraction: result.extraction,
           reason: 'low_confidence'
@@ -120,7 +141,7 @@ async function processExtractionJob(job) {
     // Check for escalation
     if (result.extraction.escalation?.shouldPause) {
       await handleEscalation({
-        tenantId,
+        organizationId,
         leadId,
         conversationId,
         reason: result.extraction.escalation.reason,
@@ -145,7 +166,7 @@ async function processExtractionJob(job) {
     
     // Log failed extraction
     await logExtraction({
-      tenantId: job.data.tenantId,
+      organizationId: job.data.organizationId,
       leadId: job.data.leadId,
       conversationId: job.data.conversationId,
       error: error.message,
@@ -175,7 +196,7 @@ async function logExtraction(data) {
     const { error } = await supabase
       .from('extraction_logs')
       .insert([{
-        tenant_id: data.tenantId,
+        organization_id: data.organizationId,
         lead_id: data.leadId,
         conversation_id: data.conversationId,
         extraction_data: data.extraction || null,
@@ -210,7 +231,7 @@ async function queueManualReview(data) {
     const { error } = await supabase
       .from('manual_review_queue')
       .insert([{
-        tenant_id: data.tenantId,
+        organization_id: data.organizationId,
         lead_id: data.leadId,
         extraction_data: data.extraction,
         reason: data.reason,
@@ -235,13 +256,13 @@ async function queueManualReview(data) {
  */
 async function handleEscalation(data) {
   try {
-    const conversationService = new ConversationService(data.tenantId);
+    const conversationService = new ConversationService(data.organizationId);
     
     // Pause AI for this conversation
     await conversationService.pauseAI(data.conversationId, data.reason);
     
     // Update lead status in CRM
-    const adapter = await CRMFactory.getAdapter(data.tenantId);
+    const adapter = await CRMFactory.getAdapter(data.organizationId);
     await adapter.updateLead(data.leadId, {
       ai_paused: true,
       escalation_reason: data.reason,
@@ -270,7 +291,7 @@ async function handleEscalation(data) {
  * Batch extraction processor for multiple leads
  */
 async function processBatchExtraction(job) {
-  const { tenantId, leadIds, options = {} } = job.data;
+  const { organizationId, leadIds, options = {} } = job.data;
   const results = [];
   
   console.log(`📦 Processing batch extraction for ${leadIds.length} leads`);
@@ -280,7 +301,7 @@ async function processBatchExtraction(job) {
       // Create individual extraction job
       const individualJob = {
         data: {
-          tenantId,
+          organizationId,
           leadId,
           trigger: 'batch',
           options

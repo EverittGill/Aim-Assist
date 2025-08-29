@@ -7,7 +7,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const UserService = require('./database/UserService');
-const TenantService = require('./database/TenantService');
+const OrganizationService = require('./database/OrganizationService');
 
 class AuthService {
   constructor(jwtSecret) {
@@ -17,7 +17,7 @@ class AuthService {
     this.jwtSecret = jwtSecret;
     this.tokenExpiration = '7d'; // 7 days for persistent login
     this.userService = UserService;
-    this.tenantService = TenantService;
+    this.tenantService = OrganizationService;
     
     // Fallback mock users for when database is unavailable
     this.mockUsers = {
@@ -25,7 +25,7 @@ class AuthService {
         id: 'demo-user-fallback',
         email: 'demo@aimassist.ai',
         password: 'demo123',
-        tenant_id: 'demo-tenant',
+        organization_id: 'demo-tenant',
         tenant: {
           id: 'demo-tenant',
           name: 'Demo Company',
@@ -56,10 +56,10 @@ class AuthService {
   /**
    * Generate JWT token with tenant context
    */
-  generateToken(userId, tenantId, email, role = 'user') {
+  generateToken(userId, organizationId, email, role = 'user') {
     const payload = {
       userId,
-      tenantId, // Multi-tenant: Include tenant ID in token
+      organizationId, // Multi-tenant: Include tenant ID in token
       email,
       role,
       iat: Math.floor(Date.now() / 1000)
@@ -93,7 +93,7 @@ class AuthService {
   refreshToken(token) {
     try {
       const decoded = jwt.verify(token, this.jwtSecret, { ignoreExpiration: true });
-      return this.generateToken(decoded.userId, decoded.tenantId, decoded.email, decoded.role);
+      return this.generateToken(decoded.userId, decoded.organizationId, decoded.email, decoded.role);
     } catch (error) {
       throw new Error('Token refresh failed');
     }
@@ -115,7 +115,7 @@ class AuthService {
           return {
             userId: user.id,
             email: user.email,
-            tenantId: user.tenant_id,
+            organizationId: user.organization_id,
             tenantName: user.tenant.name,
             role: user.role,
             tenantConfig: {
@@ -144,7 +144,7 @@ class AuthService {
         return {
           userId: mockUser.id,
           email: mockUser.email,
-          tenantId: mockUser.tenant_id,
+          organizationId: mockUser.organization_id,
           tenantName: mockUser.tenant.name,
           role: mockUser.role,
           tenantConfig: {
@@ -166,17 +166,17 @@ class AuthService {
    * Get tenant configuration
    * Now fetches from database with fallback
    */
-  async getTenantConfig(tenantId) {
+  async getTenantConfig(organizationId) {
     try {
       // Try database first
-      const tenant = await this.tenantService.getTenantById(tenantId);
+      const tenant = await this.tenantService.getTenantById(organizationId);
       
       if (tenant) {
         // Get additional configuration
         const [crmIntegrations, channels, aiConfig] = await Promise.all([
-          this.tenantService.getCRMIntegrations(tenantId),
-          this.tenantService.getCommunicationChannels(tenantId),
-          this.tenantService.getAIConfiguration(tenantId)
+          this.tenantService.getCRMIntegrations(organizationId),
+          this.tenantService.getCommunicationChannels(organizationId),
+          this.tenantService.getAIConfiguration(organizationId)
         ]);
 
         return {
@@ -199,7 +199,7 @@ class AuthService {
     }
 
     // Fallback for demo tenant
-    if (tenantId === 'demo-tenant') {
+    if (organizationId === 'demo-tenant') {
       console.log('⚠️ Using fallback demo tenant configuration');
       return {
         id: 'demo-tenant',
@@ -237,7 +237,7 @@ class AuthService {
         const decoded = this.verifyToken(token);
         
         // Validate tenant is still active
-        const tenantStatus = await this.tenantService.validateTenantStatus(decoded.tenantId);
+        const tenantStatus = await this.tenantService.validateTenantStatus(decoded.organizationId);
         
         if (!tenantStatus.valid) {
           return res.status(403).json({ 
@@ -251,8 +251,8 @@ class AuthService {
           email: decoded.email,
           role: decoded.role
         };
-        req.tenantId = decoded.tenantId; // Critical for multi-tenancy
-        req.tenant = tenantStatus.tenant; // Full tenant object
+        req.organizationId = decoded.organizationId; // Critical for multi-tenancy
+        req.organization = tenantStatus.tenant; // Full tenant object
         
         // Update user activity
         this.userService.updateLastActivity(decoded.userId).catch(err => {

@@ -11,7 +11,7 @@ const TranslationService = require('./TranslationService');
 class CRMSyncService {
   constructor(organizationId) {
     this.organizationId = organizationId;
-    this.tenantId = organizationId; // Keep for backward compatibility
+    this.organizationId = organizationId; // Keep for backward compatibility
     this.batchSize = 100; // Process in batches for efficiency
     this.translator = null; // Will be initialized when we get CRM type
     this.syncStats = {
@@ -204,7 +204,7 @@ class CRMSyncService {
     const { data: existing, error: checkError } = await supabase
       .from('leads')
       .select('id, updated_at')
-      .eq('organization_id', this.tenantId)
+      .eq('organization_id', this.organizationId)
       .eq(crmIdField, leadData[crmIdField])
       .single();
     

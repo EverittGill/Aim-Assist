@@ -8,8 +8,10 @@ const { supabase } = require('../config/supabase');
 const CRMFactory = require('./crm/CRMFactory');
 
 class PhoneMatchingService {
-  constructor(tenantId) {
-    this.tenantId = tenantId;
+  constructor(organizationId) {
+    // Compatibility layer during migration
+    this.organizationId = organizationId;
+    this.organizationId = organizationId; // Keep for backward compatibility
   }
 
   /**
@@ -46,14 +48,14 @@ class PhoneMatchingService {
       throw new Error('Invalid phone number provided');
     }
     
-    console.log(`📱 [Tenant ${this.tenantId}] Finding lead with phone: ${normalizedPhone} (original: ${phoneNumber})`);
+    console.log(`📱 [Tenant ${this.organizationId}] Finding lead with phone: ${normalizedPhone} (original: ${phoneNumber})`);
     
     try {
-      // Step 1: Check Supabase first - MUST filter by tenant_id
+      // Step 1: Check Supabase first - MUST filter by organization_id
       const { data: supabaseLead, error: dbError } = await supabase
         .from('leads')
         .select('*')
-        .eq('organization_id', this.tenantId)  // CRITICAL: Tenant isolation
+        .eq('organization_id', this.organizationId)  // CRITICAL: Tenant isolation
         .or(`phone.ilike.%${normalizedPhone}%,phone_secondary.ilike.%${normalizedPhone}%`)
         .single();
       
@@ -67,15 +69,15 @@ class PhoneMatchingService {
       }
       
       // Step 2: Search in CRM
-      const adapter = await CRMFactory.getAdapter(this.tenantId);
+      const adapter = await CRMFactory.getAdapter(this.organizationId);
       const crmLead = await adapter.findLeadByPhone(phoneNumber);
       
       if (crmLead) {
         console.log(`✅ Found lead in CRM: ${crmLead.crm_lead_id} - ${crmLead.first_name} ${crmLead.last_name}`);
         
         // Check if lead should sync based on tags
-        const TenantService = require('./TenantService');
-        const shouldSync = await TenantService.shouldSyncLead(this.tenantId, crmLead.tags || []);
+        const OrganizationService = require('./OrganizationService');
+        const shouldSync = await OrganizationService.shouldSyncLead(this.organizationId, crmLead.tags || []);
         
         if (shouldSync) {
           // Step 3: Sync CRM lead to Supabase
@@ -96,7 +98,7 @@ class PhoneMatchingService {
               last_name: crmLead.last_name,
               phone: crmLead.phone,
               tags: crmLead.tags,
-              organization_id: this.tenantId
+              organization_id: this.organizationId
             },
             source: 'crm_no_sync',
             needsSync: false
@@ -139,7 +141,7 @@ class PhoneMatchingService {
   async syncLeadToSupabase(crmLead) {
     try {
       const leadData = {
-        organization_id: this.tenantId,
+        organization_id: this.organizationId,
         fub_lead_id: crmLead.crm_lead_id || crmLead.id,
         crm_type: 'followupboss',
         first_name: crmLead.first_name || '',
@@ -214,7 +216,7 @@ class PhoneMatchingService {
       }
       
       // Get from CRM
-      const adapter = await CRMFactory.getAdapter(this.tenantId);
+      const adapter = await CRMFactory.getAdapter(this.organizationId);
       const crmLead = await adapter.getLead(supabaseLead.crm_lead_id);
       
       if (!crmLead) {
@@ -272,7 +274,7 @@ class PhoneMatchingService {
       
       if (lead && lead.crm_lead_id) {
         // Update in CRM
-        const adapter = await CRMFactory.getAdapter(this.tenantId);
+        const adapter = await CRMFactory.getAdapter(this.organizationId);
         await adapter.updateLead(lead.crm_lead_id, {
           phone: newPhoneNumber
         });
@@ -295,7 +297,7 @@ class PhoneMatchingService {
       const { data: leads } = await supabase
         .from('leads')
         .select('id, crm_lead_id, phone, full_name')
-        .eq('organization_id', this.tenantId)
+        .eq('organization_id', this.organizationId)
         .not('phone', 'is', null);
       
       console.log(`🔍 Verifying ${leads.length} leads...`);

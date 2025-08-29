@@ -9,8 +9,8 @@ class TagPollingScheduler {
   /**
    * Initialize tag polling for a tenant
    */
-  static async initializeForTenant(tenantId, tagConfigs = []) {
-    console.log(`⏰ Initializing tag polling schedules for tenant ${tenantId}`);
+  static async initializeForTenant(organizationId, tagConfigs = []) {
+    console.log(`⏰ Initializing tag polling schedules for tenant ${organizationId}`);
     
     try {
       // Default configuration for AIM_ASSIST if no configs provided
@@ -26,7 +26,7 @@ class TagPollingScheduler {
       
       // Set up polling for each tag
       for (const config of tagConfigs) {
-        await this.scheduleTagPolling(tenantId, config);
+        await this.scheduleTagPolling(organizationId, config);
       }
       
       console.log(`✅ Tag polling schedules initialized for ${tagConfigs.length} tags`);
@@ -41,7 +41,7 @@ class TagPollingScheduler {
   /**
    * Schedule polling for a specific tag
    */
-  static async scheduleTagPolling(tenantId, config) {
+  static async scheduleTagPolling(organizationId, config) {
     const {
       tagName,
       intervalMinutes = 3,
@@ -54,7 +54,7 @@ class TagPollingScheduler {
       timezone = 'America/New_York'
     } = config;
     
-    const jobId = `tag-poll-${tenantId}-${tagName}`;
+    const jobId = `tag-poll-${organizationId}-${tagName}`;
     
     // Remove existing job if any
     await this.removeScheduledJob('tag-poll', jobId);
@@ -87,7 +87,7 @@ class TagPollingScheduler {
     
     // Add repeatable job
     const job = await QueueManager.addJob('tag-poll', {
-      tenantId,
+      organizationId,
       tagName,
       processImmediately,
       enableAI,
@@ -95,10 +95,10 @@ class TagPollingScheduler {
       sinceMinutesAgo: intervalMinutes * 2 // Look back twice the interval
     }, scheduleOptions);
     
-    console.log(`📅 Scheduled polling for tag "${tagName}" every ${intervalMinutes} minutes (tenant: ${tenantId})`);
+    console.log(`📅 Scheduled polling for tag "${tagName}" every ${intervalMinutes} minutes (tenant: ${organizationId})`);
     
     // Store configuration in database for persistence
-    await this.saveTagPollingConfig(tenantId, {
+    await this.saveTagPollingConfig(organizationId, {
       tagName,
       intervalMinutes,
       processImmediately,
@@ -142,7 +142,7 @@ class TagPollingScheduler {
   /**
    * Save tag polling configuration to database
    */
-  static async saveTagPollingConfig(tenantId, config) {
+  static async saveTagPollingConfig(organizationId, config) {
     try {
       const { supabase } = require('../config/supabase');
       
@@ -155,7 +155,7 @@ class TagPollingScheduler {
       await supabase
         .from('tag_polling_configs')
         .upsert({
-          organization_id: tenantId,
+          organization_id: organizationId,
           tag_name: config.tagName,
           interval_minutes: config.intervalMinutes,
           process_immediately: config.processImmediately,
@@ -169,7 +169,7 @@ class TagPollingScheduler {
           is_active: config.isActive,
           updated_at: new Date()
         }, {
-          onConflict: 'tenant_id,tag_name'
+          onConflict: 'organization_id,tag_name'
         });
       
     } catch (error) {
@@ -180,7 +180,7 @@ class TagPollingScheduler {
   /**
    * Get all tag polling configurations for a tenant
    */
-  static async getTagPollingConfigs(tenantId) {
+  static async getTagPollingConfigs(organizationId) {
     try {
       const { supabase } = require('../config/supabase');
       
@@ -189,7 +189,7 @@ class TagPollingScheduler {
       const { data, error } = await supabase
         .from('tag_polling_configs')
         .select('*')
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .order('tag_name');
       
       if (error) {
@@ -208,7 +208,7 @@ class TagPollingScheduler {
   /**
    * Get all scheduled tag polls for a tenant
    */
-  static async getScheduledTagPolls(tenantId) {
+  static async getScheduledTagPolls(organizationId) {
     try {
       const queue = QueueManager.queues['tag-poll'];
       if (!queue) return [];
@@ -217,12 +217,12 @@ class TagPollingScheduler {
       
       // Filter jobs for this tenant
       const tenantJobs = repeatableJobs.filter(job => {
-        return job.id && job.id.includes(tenantId);
+        return job.id && job.id.includes(organizationId);
       });
       
       return tenantJobs.map(job => {
         // Extract tag name from job ID
-        const tagName = job.id.replace(`tag-poll-${tenantId}-`, '');
+        const tagName = job.id.replace(`tag-poll-${organizationId}-`, '');
         
         return {
           id: job.id,
@@ -243,9 +243,9 @@ class TagPollingScheduler {
   /**
    * Pause all tag polling schedules for a tenant
    */
-  static async pauseSchedules(tenantId) {
+  static async pauseSchedules(organizationId) {
     try {
-      const jobs = await this.getScheduledTagPolls(tenantId);
+      const jobs = await this.getScheduledTagPolls(organizationId);
       
       for (const job of jobs) {
         await this.removeScheduledJob('tag-poll', job.id);
@@ -257,10 +257,10 @@ class TagPollingScheduler {
         await supabase
           .from('tag_polling_configs')
           .update({ is_active: false })
-          .eq('organization_id', tenantId);
+          .eq('organization_id', organizationId);
       }
       
-      console.log(`⏸️ Paused all tag polling schedules for tenant ${tenantId}`);
+      console.log(`⏸️ Paused all tag polling schedules for tenant ${organizationId}`);
       return true;
       
     } catch (error) {
@@ -272,20 +272,20 @@ class TagPollingScheduler {
   /**
    * Resume tag polling schedules for a tenant
    */
-  static async resumeSchedules(tenantId) {
+  static async resumeSchedules(organizationId) {
     try {
       // Get saved configurations from database
-      const configs = await this.getTagPollingConfigs(tenantId);
+      const configs = await this.getTagPollingConfigs(organizationId);
       
       if (configs.length === 0) {
         // Use default AIM_ASSIST if no configs
-        return await this.initializeForTenant(tenantId);
+        return await this.initializeForTenant(organizationId);
       }
       
       // Restore each configuration
       for (const config of configs) {
         if (config.is_active) {
-          await this.scheduleTagPolling(tenantId, {
+          await this.scheduleTagPolling(organizationId, {
             tagName: config.tag_name,
             intervalMinutes: config.interval_minutes,
             processImmediately: config.process_immediately,
@@ -299,7 +299,7 @@ class TagPollingScheduler {
         }
       }
       
-      console.log(`▶️ Resumed tag polling schedules for tenant ${tenantId}`);
+      console.log(`▶️ Resumed tag polling schedules for tenant ${organizationId}`);
       return true;
       
     } catch (error) {
@@ -322,7 +322,7 @@ class TagPollingScheduler {
       
       // Get all active tenants
       const { data: tenants, error } = await supabase
-        .from('tenants')
+        .from('organizations')
         .select('id, settings')
         .eq('is_active', true);
       

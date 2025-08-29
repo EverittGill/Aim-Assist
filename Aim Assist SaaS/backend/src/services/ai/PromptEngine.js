@@ -8,8 +8,8 @@
 const { supabase } = require('../../config/supabase');
 
 class PromptEngine {
-  constructor(tenantId = null) {
-    this.tenantId = tenantId;
+  constructor(organizationId = null) {
+    this.organizationId = organizationId;
     this.defaultPrompts = this.getDefaultPrompts();
     this.customPrompts = {};
   }
@@ -55,12 +55,12 @@ Assistant: [Generate a helpful, natural response under 160 characters addressing
     }
     
     // Try to load from database if tenant ID provided
-    if (this.tenantId && supabase) {
+    if (this.organizationId && supabase) {
       try {
         const { data, error } = await supabase
           .from('templates')
           .select('content')
-          .eq('organization_id', this.tenantId)
+          .eq('organization_id', this.organizationId)
           .eq('name', templateName)
           .eq('is_active', true)
           .single();
@@ -82,7 +82,7 @@ Assistant: [Generate a helpful, natural response under 160 characters addressing
    * Save custom prompt template
    */
   async savePrompt(templateName, content, type = 'custom') {
-    if (!this.tenantId || !supabase) {
+    if (!this.organizationId || !supabase) {
       // Just save in memory
       this.customPrompts[templateName] = content;
       return true;
@@ -92,7 +92,7 @@ Assistant: [Generate a helpful, natural response under 160 characters addressing
       const { data, error } = await supabase
         .from('templates')
         .upsert({
-          organization_id: this.tenantId,
+          organization_id: this.organizationId,
           name: templateName,
           type,
           content,
@@ -184,12 +184,12 @@ Assistant: [Generate a helpful, natural response under 160 characters addressing
     }
     
     // Add custom templates from database
-    if (this.tenantId && supabase) {
+    if (this.organizationId && supabase) {
       try {
         const { data, error } = await supabase
           .from('templates')
           .select('*')
-          .eq('organization_id', this.tenantId)
+          .eq('organization_id', this.organizationId)
           .eq('is_active', true);
         
         if (data) {
@@ -222,12 +222,12 @@ Assistant: [Generate a helpful, natural response under 160 characters addressing
   async resetToDefaults() {
     this.customPrompts = {};
     
-    if (this.tenantId && supabase) {
+    if (this.organizationId && supabase) {
       try {
         await supabase
           .from('templates')
           .update({ is_active: false })
-          .eq('organization_id', this.tenantId);
+          .eq('organization_id', this.organizationId);
       } catch (error) {
         console.error('Error resetting templates:', error);
       }

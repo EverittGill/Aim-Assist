@@ -124,7 +124,7 @@ const ValidationResultSchema = z.object({
  */
 const ExtractionContextSchema = z.object({
   leadId: z.string(),
-  tenantId: z.string(),
+  organizationId: z.string(),
   conversation: z.array(z.object({
     sender: z.enum(['lead', 'ai', 'agent']),
     content: z.string(),

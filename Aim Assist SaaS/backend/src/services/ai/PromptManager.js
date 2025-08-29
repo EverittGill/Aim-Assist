@@ -7,8 +7,10 @@
 const { supabase } = require('../../config/supabase');
 
 class PromptManager {
-  constructor(tenantId) {
-    this.tenantId = tenantId;
+  constructor(organizationId) {
+    // Compatibility layer during migration
+    this.organizationId = organizationId;
+    this.organizationId = organizationId; // Keep for backward compatibility
     this.prompts = new Map();
     this.variables = new Map();
     this.defaultPrompts = this.getDefaultPrompts();
@@ -22,7 +24,7 @@ class PromptManager {
       const { data: customPrompts, error } = await supabase
         .from('ai_prompts')
         .select('*')
-        .eq('organization_id', this.tenantId)
+        .eq('organization_id', this.organizationId)
         .eq('is_active', true);
 
       if (error) {
@@ -40,7 +42,7 @@ class PromptManager {
         });
       });
 
-      console.log(`📝 Loaded ${customPrompts?.length || 0} custom prompts for tenant ${this.tenantId}`);
+      console.log(`📝 Loaded ${customPrompts?.length || 0} custom prompts for tenant ${this.organizationId}`);
     } catch (error) {
       console.error('Failed to load tenant prompts:', error);
     }
@@ -222,7 +224,7 @@ Message:`,
     const { data } = await supabase
       .from('tenant_settings')
       .select('escalation_keywords')
-      .eq('organization_id', this.tenantId)
+      .eq('organization_id', this.organizationId)
       .single();
 
     return data?.escalation_keywords || [
@@ -250,7 +252,7 @@ Message:`,
       const { data, error } = await supabase
         .from('ai_prompts')
         .upsert({
-          organization_id: this.tenantId,
+          organization_id: this.organizationId,
           prompt_key: key,
           template: template,
           variables: variables,
@@ -258,7 +260,7 @@ Message:`,
           is_active: true,
           updated_at: new Date().toISOString()
         }, {
-          onConflict: 'tenant_id,prompt_key'
+          onConflict: 'organization_id,prompt_key'
         })
         .select()
         .single();
@@ -320,7 +322,7 @@ Message:`,
       const { error } = await supabase
         .from('ai_prompts')
         .update({ is_active: false })
-        .eq('organization_id', this.tenantId)
+        .eq('organization_id', this.organizationId)
         .eq('prompt_key', key);
 
       if (error) throw error;

@@ -10,17 +10,19 @@ const { supabase } = require('../../config/supabase');
 const SimpleContextManager = require('../SimpleContextManager');
 
 class ClaudeService {
-  constructor(tenantId) {
-    this.tenantId = tenantId;
+  constructor(organizationId) {
+    // Compatibility layer during migration
+    this.organizationId = organizationId;
+    this.organizationId = organizationId; // Keep for backward compatibility
     this.apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
-    this.contextManager = new SimpleContextManager(tenantId);
+    this.contextManager = new SimpleContextManager(organizationId);
     
     if (!this.apiKey || this.apiKey === 'sk-ant-your_anthropic_key') {
       console.warn('⚠️ Claude API key not configured - using mock responses');
       this.client = null;
     } else {
       this.client = new Anthropic({ apiKey: this.apiKey });
-      console.log('✅ Claude 3.5 Sonnet initialized for tenant:', tenantId);
+      console.log('✅ Claude 3.5 Sonnet initialized for tenant:', organizationId);
     }
     
     // Message deduplication cache (in-memory for now)

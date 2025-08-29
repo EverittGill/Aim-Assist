@@ -31,7 +31,7 @@ const requireAuth = async (req, res, next) => {
 
     // Get tenant for this user
     const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
+      .from('organizations')
       .select('*')
       .eq('user_id', user.id)
       .single();
@@ -42,7 +42,7 @@ const requireAuth = async (req, res, next) => {
     }
 
     req.user = user;
-    req.tenantId = tenant.id;
+    req.organizationId = tenant.id;
     req.tenant = tenant;
     next();
   } catch (error) {
@@ -56,11 +56,11 @@ module.exports = (authService) => {
   // Get all leads for tenant FROM SUPABASE
   router.get('/', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.tenantId || req.query.tenant_id || 'demo-tenant';
-      console.log(`Fetching leads from Supabase for tenant: ${tenantId}`);
+      const organizationId = req.organizationId || req.organizationId || req.query.organization_id || 'demo-tenant';
+      console.log(`Fetching leads from Supabase for tenant: ${organizationId}`);
       
       // Get CRM type for this tenant
-      const adapter = await CRMFactory.getAdapter(tenantId);
+      const adapter = await CRMFactory.getAdapter(organizationId);
       const crmType = adapter.crmType || 'fub';
       const translator = new TranslationService(crmType);
       const crmIdField = translator.getCRMLeadIdField();
@@ -77,7 +77,7 @@ module.exports = (authService) => {
             unread_count
           )
         `)
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
         .limit(200);
       
@@ -119,11 +119,11 @@ module.exports = (authService) => {
   // Get single lead FROM SUPABASE
   router.get('/:id', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.tenantId || 'demo-tenant';
+      const organizationId = req.organizationId || req.organizationId || 'demo-tenant';
       const leadId = req.params.id;
       
       // Get CRM type for dynamic field lookup
-      const adapter = await CRMFactory.getAdapter(tenantId);
+      const adapter = await CRMFactory.getAdapter(organizationId);
       const crmType = adapter.crmType || 'fub';
       const translator = new TranslationService(crmType);
       const crmIdField = translator.getCRMLeadIdField();
@@ -140,7 +140,7 @@ module.exports = (authService) => {
             unread_count
           )
         `)
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .or(`${crmIdField}.eq.${leadId},id.eq.${leadId}`)
         .single();
       
@@ -180,10 +180,10 @@ module.exports = (authService) => {
   // Create new lead
   router.post('/', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.tenantId || 'demo-tenant';
+      const organizationId = req.organizationId || req.organizationId || 'demo-tenant';
       const leadData = req.body;
       
-      const adapter = await CRMFactory.getAdapter(tenantId);
+      const adapter = await CRMFactory.getAdapter(organizationId);
       const newLead = await adapter.createLead(leadData);
       
       res.json({ 
@@ -202,12 +202,12 @@ module.exports = (authService) => {
   // Update lead IN SUPABASE FIRST
   router.put('/:id', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.tenantId || 'demo-tenant';
+      const organizationId = req.organizationId || req.organizationId || 'demo-tenant';
       const leadId = req.params.id;
       const updates = req.body;
       
       // Get CRM type for dynamic field lookup
-      const adapter = await CRMFactory.getAdapter(tenantId);
+      const adapter = await CRMFactory.getAdapter(organizationId);
       const crmType = adapter.crmType || 'fub';
       const translator = new TranslationService(crmType);
       const crmIdField = translator.getCRMLeadIdField();
@@ -219,7 +219,7 @@ module.exports = (authService) => {
           ...updates,
           updated_at: new Date().toISOString()
         })
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .or(`${crmIdField}.eq.${leadId},id.eq.${leadId}`)
         .select()
         .single();
@@ -255,7 +255,7 @@ module.exports = (authService) => {
   // Update lead AI status
   router.put('/:id/status', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.tenantId || 'demo-tenant';
+      const organizationId = req.organizationId || req.organizationId || 'demo-tenant';
       const leadId = req.params.id;
       const { status } = req.body;
       
@@ -267,7 +267,7 @@ module.exports = (authService) => {
       await LeadService.updateAIStatus(leadId, status);
       
       // Also update in CRM if field configured
-      const adapter = await CRMFactory.getAdapter(tenantId);
+      const adapter = await CRMFactory.getAdapter(organizationId);
       const fieldName = process.env.FUB_EUGENIA_TALKING_STATUS_FIELD_NAME;
       
       if (fieldName && adapter.updateCustomField) {
@@ -291,10 +291,10 @@ module.exports = (authService) => {
   // Delete lead
   router.delete('/:id', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.tenantId || 'demo-tenant';
+      const organizationId = req.organizationId || req.organizationId || 'demo-tenant';
       const leadId = req.params.id;
       
-      const adapter = await CRMFactory.getAdapter(tenantId);
+      const adapter = await CRMFactory.getAdapter(organizationId);
       await adapter.deleteLead(leadId);
       
       res.json({ 

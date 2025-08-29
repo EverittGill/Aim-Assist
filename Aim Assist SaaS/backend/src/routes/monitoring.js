@@ -14,7 +14,7 @@ const { supabase } = require('../config/supabase');
  */
 router.get('/dashboard', async (req, res) => {
   try {
-    const tenantId = req.tenantId || 'demo-tenant';
+    const organizationId = req.organizationId || req.organizationId || 'demo-tenant';
     
     // Get time range from query params
     const { period = '24h' } = req.query;
@@ -22,7 +22,7 @@ router.get('/dashboard', async (req, res) => {
     const endDate = new Date();
     
     // Initialize services
-    const auditService = new AuditService(tenantId);
+    const auditService = new AuditService(organizationId);
     
     // Fetch all metrics in parallel
     const [
@@ -78,10 +78,10 @@ router.get('/dashboard', async (req, res) => {
  */
 router.get('/lead/:leadId', async (req, res) => {
   try {
-    const tenantId = req.tenantId || 'demo-tenant';
+    const organizationId = req.organizationId || req.organizationId || 'demo-tenant';
     const { leadId } = req.params;
     
-    const auditService = new AuditService(tenantId);
+    const auditService = new AuditService(organizationId);
     
     // Get extraction history
     const extractionHistory = await auditService.getExtractionHistory(leadId);
@@ -117,7 +117,7 @@ router.get('/lead/:leadId', async (req, res) => {
  */
 router.get('/compliance', async (req, res) => {
   try {
-    const tenantId = req.tenantId || 'demo-tenant';
+    const organizationId = req.organizationId || req.organizationId || 'demo-tenant';
     const { startDate, endDate } = req.query;
     
     if (!startDate || !endDate) {
@@ -126,7 +126,7 @@ router.get('/compliance', async (req, res) => {
       });
     }
     
-    const auditService = new AuditService(tenantId);
+    const auditService = new AuditService(organizationId);
     const report = await auditService.generateComplianceReport(
       new Date(startDate),
       new Date(endDate)
@@ -148,10 +148,10 @@ router.get('/compliance', async (req, res) => {
  */
 router.get('/export', async (req, res) => {
   try {
-    const tenantId = req.tenantId || 'demo-tenant';
+    const organizationId = req.organizationId || req.organizationId || 'demo-tenant';
     const { format = 'json', ...filters } = req.query;
     
-    const auditService = new AuditService(tenantId);
+    const auditService = new AuditService(organizationId);
     const data = await auditService.exportLogs(filters, format);
     
     if (format === 'csv') {

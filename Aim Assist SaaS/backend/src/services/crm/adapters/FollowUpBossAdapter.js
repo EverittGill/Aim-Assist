@@ -9,8 +9,8 @@ const CRMAdapter = require('../CRMAdapter');
 const axios = require('axios');
 
 class FollowUpBossAdapter extends CRMAdapter {
-  constructor(tenantId, config) {
-    super(tenantId, config);
+  constructor(organizationId, config) {
+    super(organizationId, config);
     
     // Validate required credentials
     const { api_key, x_system, x_system_key } = this.credentials;
@@ -322,6 +322,28 @@ class FollowUpBossAdapter extends CRMAdapter {
       return response.status === 200;
     } catch (error) {
       console.error('Error updating FUB custom fields:', error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Add activity/note to lead
+   */
+  async addActivity(leadId, activity) {
+    try {
+      const note = `[${new Date().toLocaleString()}] ${activity.content}`;
+      const lead = await this.getLead(leadId);
+      
+      if (!lead) {
+        console.error(`Lead ${leadId} not found`);
+        return false;
+      }
+      
+      const updatedNotes = lead.notes ? `${lead.notes}\n\n${note}` : note;
+      
+      return this.updateLead(leadId, { notes: updatedNotes });
+    } catch (error) {
+      console.error('Error adding activity:', error);
       return false;
     }
   }

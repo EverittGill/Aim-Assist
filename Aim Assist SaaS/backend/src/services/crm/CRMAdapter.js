@@ -5,8 +5,8 @@
  */
 
 class CRMAdapter {
-  constructor(tenantId, config = {}) {
-    this.tenantId = tenantId;
+  constructor(organizationId, config = {}) {
+    this.organizationId = organizationId;
     this.config = config;
     this.credentials = config.credentials || {};
     this.fieldMappings = config.fieldMappings || this.getDefaultFieldMappings();

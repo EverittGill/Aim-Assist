@@ -13,7 +13,7 @@ class TagPollingService {
   constructor(organizationId) {
     // Support both parameter names during transition
     this.organizationId = organizationId;
-    this.tenantId = organizationId; // Keep for backward compatibility
+    this.organizationId = organizationId; // Keep for backward compatibility
     this.pollStats = {
       fetched: 0,
       new: 0,
@@ -113,20 +113,20 @@ class TagPollingService {
   async processTaggedLead(crmLead, tagName, options) {
     const { processImmediately, enableAI, sendAutoText } = options;
     
-    // For now, use the organization directly (tenant_id IS organization_id)
+    // For now, use the organization directly (organization_id IS organization_id)
     // This works because we're using organization_id as the tenant identifier
-    const organizationId = this.tenantId;
+    const organizationId = this.organizationId;
     
     // Try to get tenant/org info - but don't fail if not found
     const { data: tenant } = await supabase
       .from('organizations')
       .select('id, crm_type, settings')
-      .eq('id', this.tenantId)
+      .eq('id', this.organizationId)
       .single();
     
     // Use defaults if no tenant found (for testing)
     const tenantData = tenant || { 
-      id: this.tenantId,
+      id: this.organizationId,
       crm_type: 'fub',
       settings: {}
     };
@@ -206,7 +206,7 @@ class TagPollingService {
       
       // Check and apply auto-text rules
       // Lead now has phone in dedicated column
-      await AutoTextRulesService.checkAndApplyRules(this.tenantId, dbLead);
+      await AutoTextRulesService.checkAndApplyRules(this.organizationId, dbLead);
     }
     
     return dbLead;
@@ -328,7 +328,7 @@ class TagPollingService {
     try {
       // Use AIService to generate initial outreach instead of hardcoded message
       const AIService = require('./ai/AIService');
-      const aiService = new AIService(this.tenantId);
+      const aiService = new AIService(this.organizationId);
       await aiService.initialize();
       
       // Generate initial outreach message using AI
@@ -356,7 +356,7 @@ class TagPollingService {
     
     // Use queueSMS method like other services do, with proper field name translation
     await QueueManager.queueSMS({
-      tenantId: lead.organization_id,  // Translate organization_id to tenantId
+      organizationId: lead.organization_id,  // Translate organization_id to organizationId
       leadId: lead.fub_lead_id || lead.lofty_lead_id || lead.id, // Use CRM ID for logging
       to: lead.phone,                   // Translate phone to to
       message: message,
@@ -451,7 +451,7 @@ class TagPollingService {
     const { data } = await supabase
       .from('tag_poll_history')
       .select('last_poll_at')
-      .eq('organization_id', this.tenantId)
+      .eq('organization_id', this.organizationId)
       .eq('tag_name', tagName)
       .single();
     
@@ -471,7 +471,7 @@ class TagPollingService {
       const { data: currentHistory } = await supabase
         .from('tag_poll_history')
         .select('poll_count')
-        .eq('organization_id', this.tenantId)
+        .eq('organization_id', this.organizationId)
         .eq('tag_name', tagName)
         .single();
       
@@ -481,14 +481,14 @@ class TagPollingService {
       await supabase
         .from('tag_poll_history')
         .upsert({
-          organization_id: this.tenantId,
+          organization_id: this.organizationId,
           tag_name: tagName,
           last_poll_at: now,
           poll_count: newPollCount,
           leads_found: this.pollStats.fetched,
           leads_processed: this.pollStats.processed
         }, {
-          onConflict: 'tenant_id,tag_name'
+          onConflict: 'organization_id,tag_name'
         });
     } catch (error) {
       console.error('Error updating poll history:', error);
@@ -513,13 +513,13 @@ class TagPollingService {
   /**
    * Get polling statistics for a tag
    */
-  static async getTagPollStats(tenantId, tagName) {
+  static async getTagPollStats(organizationId, tagName) {
     if (!supabase) return null;
     
     const { data } = await supabase
       .from('tag_poll_history')
       .select('*')
-      .eq('organization_id', tenantId)
+      .eq('organization_id', organizationId)
       .eq('tag_name', tagName)
       .single();
     
@@ -529,13 +529,13 @@ class TagPollingService {
   /**
    * Get all monitored tags for a tenant
    */
-  static async getMonitoredTags(tenantId) {
+  static async getMonitoredTags(organizationId) {
     if (!supabase) return [];
     
     const { data } = await supabase
       .from('tag_poll_history')
       .select('*')
-      .eq('organization_id', tenantId)
+      .eq('organization_id', organizationId)
       .order('last_poll_at', { ascending: false });
     
     return data || [];

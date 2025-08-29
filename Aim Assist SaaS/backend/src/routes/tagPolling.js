@@ -17,7 +17,7 @@ const QueueManager = require('../queues/QueueManager').default;
 router.post('/:tagName', authenticateRequest, async (req, res) => {
   try {
     const { tagName } = req.params;
-    const tenantId = req.tenantId;
+    const organizationId = req.organizationId || req.organizationId;
     
     const {
       processImmediately = true,
@@ -27,12 +27,12 @@ router.post('/:tagName', authenticateRequest, async (req, res) => {
       async = false // If true, queue the job instead of running immediately
     } = req.body;
     
-    console.log(`📍 Tag poll request for "${tagName}" from tenant ${tenantId}`);
+    console.log(`📍 Tag poll request for "${tagName}" from tenant ${organizationId}`);
     
     if (async) {
       // Queue the job for background processing
       const job = await QueueManager.addJob('tag-poll', {
-        tenantId,
+        organizationId,
         tagName,
         processImmediately,
         enableAI,
@@ -48,7 +48,7 @@ router.post('/:tagName', authenticateRequest, async (req, res) => {
       });
     } else {
       // Process immediately
-      const pollService = new TagPollingService(tenantId);
+      const pollService = new TagPollingService(organizationId);
       const result = await pollService.pollForTag(tagName, {
         processImmediately,
         enableAI,
@@ -79,9 +79,9 @@ router.post('/:tagName', authenticateRequest, async (req, res) => {
 router.get('/stats/:tagName', authenticateRequest, async (req, res) => {
   try {
     const { tagName } = req.params;
-    const tenantId = req.tenantId;
+    const organizationId = req.organizationId || req.organizationId;
     
-    const stats = await TagPollingService.getTagPollStats(tenantId, tagName);
+    const stats = await TagPollingService.getTagPollStats(organizationId, tagName);
     
     if (!stats) {
       return res.json({
@@ -110,9 +110,9 @@ router.get('/stats/:tagName', authenticateRequest, async (req, res) => {
  */
 router.get('/monitored', authenticateRequest, async (req, res) => {
   try {
-    const tenantId = req.tenantId;
+    const organizationId = req.organizationId || req.organizationId;
     
-    const tags = await TagPollingService.getMonitoredTags(tenantId);
+    const tags = await TagPollingService.getMonitoredTags(organizationId);
     
     res.json({
       success: true,
@@ -135,7 +135,7 @@ router.get('/monitored', authenticateRequest, async (req, res) => {
 router.post('/schedule/:tagName', authenticateRequest, async (req, res) => {
   try {
     const { tagName } = req.params;
-    const tenantId = req.tenantId;
+    const organizationId = req.organizationId || req.organizationId;
     
     const {
       intervalMinutes = 3, // Poll every 3 minutes by default
@@ -145,7 +145,7 @@ router.post('/schedule/:tagName', authenticateRequest, async (req, res) => {
     } = req.body;
     
     // Create unique job ID for this tenant and tag
-    const jobId = `tag-poll-${tenantId}-${tagName}`;
+    const jobId = `tag-poll-${organizationId}-${tagName}`;
     
     // Remove existing schedule if any
     const queue = QueueManager.queues['tag-poll'];
@@ -160,7 +160,7 @@ router.post('/schedule/:tagName', authenticateRequest, async (req, res) => {
     
     // Add new repeatable job
     const job = await QueueManager.addJob('tag-poll', {
-      tenantId,
+      organizationId,
       tagName,
       processImmediately,
       enableAI,
@@ -197,9 +197,9 @@ router.post('/schedule/:tagName', authenticateRequest, async (req, res) => {
 router.delete('/schedule/:tagName', authenticateRequest, async (req, res) => {
   try {
     const { tagName } = req.params;
-    const tenantId = req.tenantId;
+    const organizationId = req.organizationId || req.organizationId;
     
-    const jobId = `tag-poll-${tenantId}-${tagName}`;
+    const jobId = `tag-poll-${organizationId}-${tagName}`;
     
     const queue = QueueManager.queues['tag-poll'];
     if (!queue) {
@@ -241,7 +241,7 @@ router.delete('/schedule/:tagName', authenticateRequest, async (req, res) => {
  */
 router.get('/schedules', authenticateRequest, async (req, res) => {
   try {
-    const tenantId = req.tenantId;
+    const organizationId = req.organizationId || req.organizationId;
     
     const queue = QueueManager.queues['tag-poll'];
     if (!queue) {
@@ -255,12 +255,12 @@ router.get('/schedules', authenticateRequest, async (req, res) => {
     
     // Filter jobs for this tenant
     const tenantJobs = repeatableJobs.filter(job => {
-      return job.id && job.id.includes(tenantId);
+      return job.id && job.id.includes(organizationId);
     });
     
     const schedules = tenantJobs.map(job => {
       // Extract tag name from job ID
-      const tagName = job.id.replace(`tag-poll-${tenantId}-`, '');
+      const tagName = job.id.replace(`tag-poll-${organizationId}-`, '');
       
       return {
         tagName,

@@ -10,7 +10,7 @@ router.get('/current', authenticateToken, async (req, res) => {
     
     // First, try to find tenant where user is the owner
     const { data: ownerTenant, error: ownerError } = await supabase
-      .from('tenants')
+      .from('organizations')
       .select('*')
       .eq('user_id', userId)
       .single();
@@ -60,7 +60,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
     // Check if tenant already exists for this user
     const { data: existingTenant } = await supabase
-      .from('tenants')
+      .from('organizations')
       .select('id')
       .eq('user_id', userId)
       .single();
@@ -78,7 +78,7 @@ router.post('/', authenticateToken, async (req, res) => {
     
     // Create tenant with user_id for ownership
     const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
+      .from('organizations')
       .insert({
         user_id: userId,  // Link to Supabase auth user
         name: name || email,
@@ -104,7 +104,7 @@ router.post('/', authenticateToken, async (req, res) => {
     const { data: userRecord, error: userError } = await supabase
       .from('users')
       .insert({
-        tenant_id: tenant.id,
+        organization_id: tenant.id,
         auth_id: userId,
         email: email || userEmail,
         first_name: name ? name.split(' ')[0] : null,
@@ -126,7 +126,7 @@ router.post('/', authenticateToken, async (req, res) => {
       const { error: phoneError } = await supabase
         .from('phone_numbers')
         .insert({
-          tenant_id: tenant.id,
+          organization_id: tenant.id,
           phone_number: twilioPhone,
           provider: 'twilio',
           type: twilioPhone.startsWith('+1866') || twilioPhone.startsWith('+1855') || twilioPhone.startsWith('+1844') || twilioPhone.startsWith('+1833') ? 'toll_free' : 'local',
@@ -153,7 +153,7 @@ router.post('/', authenticateToken, async (req, res) => {
       const { error: crmError } = await supabase
         .from('crm_integrations')
         .insert({
-          tenant_id: tenant.id,
+          organization_id: tenant.id,
           type: 'followupboss',
           config: {
             apiKey: crmConfig.apiKey,
@@ -206,7 +206,7 @@ router.post('/brokerage', authenticateToken, async (req, res) => {
     
     // Create brokerage tenant
     const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
+      .from('organizations')
       .insert({
         user_id: userId,  // Owner of the brokerage
         name,
@@ -235,7 +235,7 @@ router.post('/brokerage', authenticateToken, async (req, res) => {
     const { data: userRecord, error: userError } = await supabase
       .from('users')
       .insert({
-        tenant_id: tenant.id,
+        organization_id: tenant.id,
         auth_id: userId,
         email: email || req.user.email,
         first_name: name ? name.split(' ')[0] : null,
@@ -256,7 +256,7 @@ router.post('/brokerage', authenticateToken, async (req, res) => {
       const { error: phoneError } = await supabase
         .from('phone_numbers')
         .insert({
-          tenant_id: tenant.id,
+          organization_id: tenant.id,
           phone_number: twilioPhone,
           provider: 'twilio',
           type: twilioPhone.startsWith('+1866') || twilioPhone.startsWith('+1855') || twilioPhone.startsWith('+1844') || twilioPhone.startsWith('+1833') ? 'toll_free' : 'local',
@@ -282,7 +282,7 @@ router.post('/brokerage', authenticateToken, async (req, res) => {
       await supabase
         .from('crm_integrations')
         .insert({
-          tenant_id: tenant.id,
+          organization_id: tenant.id,
           type: crmConfig.type || 'followupboss',
           config: crmConfig,
           is_active: true
@@ -305,14 +305,14 @@ router.post('/brokerage', authenticateToken, async (req, res) => {
 // Update tenant
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
-    const tenantId = req.params.id;
+    const organizationId = req.params.id;
     const userId = req.user.sub;
     
     // Verify tenant belongs to user
     const { data: existing } = await supabase
-      .from('tenants')
+      .from('organizations')
       .select('id')
-      .eq('id', tenantId)
+      .eq('id', organizationId)
       .eq('user_id', userId)
       .single();
     
@@ -327,9 +327,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
     
     // Update tenant
     const { data: tenant, error } = await supabase
-      .from('tenants')
+      .from('organizations')
       .update(req.body)
-      .eq('id', tenantId)
+      .eq('id', organizationId)
       .select()
       .single();
 
@@ -343,14 +343,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
       await supabase
         .from('phone_numbers')
         .update({ is_active: false })
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .eq('is_primary', true);
       
       // Create new phone number mapping
       const { error: phoneError } = await supabase
         .from('phone_numbers')
         .insert({
-          organization_id: tenantId,
+          organization_id: organizationId,
           phone_number: newTwilioPhone,
           provider: 'twilio',
           type: newTwilioPhone.startsWith('+1866') || newTwilioPhone.startsWith('+1855') || newTwilioPhone.startsWith('+1844') || newTwilioPhone.startsWith('+1833') ? 'toll_free' : 'local',
@@ -392,7 +392,7 @@ router.post('/join', authenticateToken, async (req, res) => {
     
     // Find brokerage by code
     const { data: brokerage, error: findError } = await supabase
-      .from('tenants')
+      .from('organizations')
       .select('*')
       .eq('join_code', code)
       .eq('type', 'brokerage')
@@ -412,10 +412,10 @@ router.post('/join', authenticateToken, async (req, res) => {
     
     // Create agent tenant under brokerage
     const { data: tenant, error: createError } = await supabase
-      .from('tenants')
+      .from('organizations')
       .insert({
         user_id: userId,
-        parent_tenant_id: brokerage.id,
+        parent_organization_id: brokerage.id,
         name: agentName,
         slug: slug,  // Required field
         email: req.user.email,

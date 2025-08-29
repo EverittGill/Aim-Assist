@@ -13,7 +13,7 @@ const ContextEnrichmentService = require('../../services/ContextEnrichmentServic
 const CRMFactory = require('../../services/crm/CRMFactory');
 const AIService = require('../../services/ai/AIService');
 const PhoneMatchingService = require('../../services/PhoneMatchingService');
-const TenantPhoneService = require('../../services/TenantPhoneService');
+const OrganizationPhoneService = require('../../services/OrganizationPhoneService');
 const QueueManager = require('../../queues/QueueManager');
 const queueManager = require('../../queues/QueueManager').default;
 
@@ -428,8 +428,10 @@ async function generateAndQueueAIResponse(organizationId, leadId, conversationId
       console.error('Lead not found in Supabase:', leadError);
       // Fallback to CRM if needed
       const adapter = await CRMFactory.getAdapter(organizationId);
-      const crmLead = await adapter.getLead(leadId);
-      return crmLead;
+      lead = await adapter.getLead(leadId);
+      if (!lead) {
+        throw new Error(`Lead ${leadId} not found in Supabase or CRM`);
+      }
     }
     
     // Build context for AI
@@ -529,8 +531,8 @@ async function generateAndQueueAIResponse(organizationId, leadId, conversationId
         
         // Send notification to agent
         // Get tenant's notification phone from configuration
-        const TenantService = require('../../services/TenantService');
-        const tenantConfig = await TenantService.getTenantConfig(organizationId);
+        const OrganizationService = require('../../services/OrganizationService');
+        const tenantConfig = await OrganizationService.getTenantConfig(organizationId);
         const notificationPhone = tenantConfig.settings?.notification_phone || process.env.USER_NOTIFICATION_PHONE;
         
         if (notificationPhone) {
@@ -613,8 +615,8 @@ router.post('/status', validateTwilioSignature, async (req, res) => {
  * CRITICAL: This determines which tenant receives the message
  */
 async function getTenantFromPhone(phoneNumber) {
-  // Use TenantPhoneService for proper multi-tenant routing
-  const organizationId = await TenantPhoneService.getTenantFromPhone(phoneNumber);
+  // Use OrganizationPhoneService for proper multi-tenant routing
+  const organizationId = await OrganizationPhoneService.getTenantFromPhone(phoneNumber);
   
   if (!organizationId) {
     console.error(`❌ No tenant found for phone ${phoneNumber}`);

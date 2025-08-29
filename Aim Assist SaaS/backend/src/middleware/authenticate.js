@@ -28,11 +28,11 @@ async function authenticate(req, res, next) {
     if (process.env.NODE_ENV === 'development' && token === 'test-token') {
       req.user = {
         id: 'test-user-id',
-        tenant_id: 'test-tenant-id',
+        organization_id: 'test-organization-id',
         email: 'test@example.com',
         role: 'admin'
       };
-      req.tenantId = 'test-tenant-id';
+      req.organizationId = 'test-organization-id';
       return next();
     }
 
@@ -41,11 +41,11 @@ async function authenticate(req, res, next) {
       console.warn('Supabase not configured - using mock auth');
       req.user = {
         id: 'mock-user-id',
-        tenant_id: 'mock-tenant-id',
+        organization_id: 'mock-organization-id',
         email: 'mock@example.com',
         role: 'admin'
       };
-      req.tenantId = 'mock-tenant-id';
+      req.organizationId = 'mock-organization-id';
       return next();
     }
 
@@ -95,12 +95,12 @@ async function authenticate(req, res, next) {
       id: userProfile.id,
       auth_id: user.id,
       email: userProfile.email,
-      tenant_id: userProfile.tenant_id,
+      organization_id: userProfile.organization_id,
       role: userProfile.role,
       permissions: userProfile.permissions,
       tenant: userProfile.tenants
     };
-    req.tenantId = userProfile.tenant_id;
+    req.organizationId = userProfile.organization_id;
 
     next();
   } catch (error) {

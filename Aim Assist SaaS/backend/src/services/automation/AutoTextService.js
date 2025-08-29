@@ -7,22 +7,22 @@
 
 const LeadService = require('../LeadService');
 const AIService = require('../ai/AIService');
-const TenantService = require('../TenantService');
+const OrganizationService = require('../OrganizationService');
 const queueManager = require('../../queues/QueueManager');
 const CRMFactory = require('../crm/CRMFactory');
 
 class AutoTextService {
-  constructor(tenantId) {
-    this.tenantId = tenantId;
+  constructor(organizationId) {
+    this.organizationId = organizationId;
     this.settings = null;
-    this.aiService = new AIService(tenantId);
+    this.aiService = new AIService(organizationId);
   }
 
   /**
    * Initialize with tenant settings
    */
   async initialize() {
-    const tenant = await TenantService.getById(this.tenantId);
+    const tenant = await OrganizationService.getById(this.organizationId);
     this.settings = tenant?.settings || {};
     return this;
   }
@@ -126,7 +126,7 @@ class AutoTextService {
       
       // Queue auto-text job
       await queueManager.addJob('auto-text', {
-        tenantId: this.tenantId,
+        organizationId: this.organizationId,
         leadId: lead.id,
         templateId: `auto_text_${lead.source.toLowerCase()}`,
         delay: delayMs
@@ -175,7 +175,7 @@ class AutoTextService {
       for (const source of this.settings.auto_text_sources || []) {
         // Get eligible leads from last 24 hours
         const leads = await LeadService.getEligibleForAutoText(
-          this.tenantId,
+          this.organizationId,
           source,
           24
         );
@@ -209,7 +209,7 @@ class AutoTextService {
   /**
    * Create auto-text rule
    */
-  static async createRule(tenantId, rule) {
+  static async createRule(organizationId, rule) {
     try {
       if (!supabase) {
         console.log('Mock rule created:', rule);
@@ -219,7 +219,7 @@ class AutoTextService {
       const { data, error } = await supabase
         .from('auto_text_rules')
         .insert([{
-          organization_id: tenantId,
+          organization_id: organizationId,
           ...rule
         }])
         .select()
@@ -236,7 +236,7 @@ class AutoTextService {
   /**
    * Get auto-text rules for tenant
    */
-  static async getRules(tenantId) {
+  static async getRules(organizationId) {
     try {
       if (!supabase) {
         return [
@@ -253,7 +253,7 @@ class AutoTextService {
       const { data, error } = await supabase
         .from('auto_text_rules')
         .select('*')
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .eq('is_active', true)
         .order('priority', { ascending: true });
       
@@ -268,14 +268,14 @@ class AutoTextService {
   /**
    * Process webhook for new lead
    */
-  static async processWebhookLead(tenantId, leadData) {
+  static async processWebhookLead(organizationId, leadData) {
     try {
-      const service = new AutoTextService(tenantId);
+      const service = new AutoTextService(organizationId);
       await service.initialize();
       
       // Create or update lead in database
       const lead = await LeadService.create({
-        organization_id: tenantId,
+        organization_id: organizationId,
         ...leadData
       });
       
@@ -290,7 +290,7 @@ class AutoTextService {
   /**
    * Get auto-text statistics
    */
-  static async getStats(tenantId, dateRange = 30) {
+  static async getStats(organizationId, dateRange = 30) {
     try {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - dateRange);

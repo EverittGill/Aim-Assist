@@ -12,7 +12,7 @@ class AutoTextRulesService {
    * Check if a lead matches any auto-text rules
    * Called when a lead is created or updated
    */
-  static async checkAndApplyRules(tenantId, lead) {
+  static async checkAndApplyRules(organizationId, lead) {
     try {
       console.log(`🔍 Checking auto-text rules for lead ${lead.crm_lead_id}`);
       
@@ -29,7 +29,7 @@ class AutoTextRulesService {
       }
       
       // Get active rules for this tenant
-      const rules = await this.getActiveRules(tenantId);
+      const rules = await this.getActiveRules(organizationId);
       
       if (!rules || rules.length === 0) {
         console.log('📋 No active auto-text rules for tenant');
@@ -60,14 +60,14 @@ class AutoTextRulesService {
           }
           
           // Apply the rule
-          await this.applyRule(tenantId, lead, rule);
+          await this.applyRule(organizationId, lead, rule);
           
           // Update rule statistics
           await this.updateRuleStats(rule.id, 'sent');
           
           // Enable AI for the lead if configured
           if (rule.trigger_conditions?.enable_ai) {
-            await this.enableAIForLead(tenantId, lead.id);
+            await this.enableAIForLead(organizationId, lead.id);
           }
           
           return {
@@ -90,13 +90,13 @@ class AutoTextRulesService {
   /**
    * Get active rules for a tenant
    */
-  static async getActiveRules(tenantId) {
+  static async getActiveRules(organizationId) {
     if (!supabase) return [];
     
     const { data, error } = await supabase
       .from('auto_text_rules')
       .select('*')
-      .eq('organization_id', tenantId)
+      .eq('organization_id', organizationId)
       .eq('is_active', true)
       .order('priority', { ascending: true }); // Lower priority number = higher priority
     
@@ -172,6 +172,7 @@ class AutoTextRulesService {
    * Apply a rule to a lead (queue the auto-text)
    */
   static async applyRule(organizationId, lead, rule) {
+    const organizationId = organizationId; // Compatibility during migration
     // Calculate delay considering business hours
     const delay = this.calculateDelay(rule);
     
@@ -306,7 +307,7 @@ class AutoTextRulesService {
   /**
    * Enable AI for a lead
    */
-  static async enableAIForLead(tenantId, leadId) {
+  static async enableAIForLead(organizationId, leadId) {
     if (!supabase) return;
     
     await supabase
@@ -324,11 +325,11 @@ class AutoTextRulesService {
   /**
    * Create a new auto-text rule
    */
-  static async createRule(tenantId, ruleData) {
+  static async createRule(organizationId, ruleData) {
     if (!supabase) throw new Error('Database not configured');
     
     const rule = {
-      organization_id: tenantId,
+      organization_id: organizationId,
       name: ruleData.name,
       description: ruleData.description,
       is_active: false, // Always start inactive for safety
@@ -363,7 +364,7 @@ class AutoTextRulesService {
   /**
    * Get all rules for a tenant
    */
-  static async getRules(tenantId) {
+  static async getRules(organizationId) {
     if (!supabase) return [];
     
     const { data, error } = await supabase

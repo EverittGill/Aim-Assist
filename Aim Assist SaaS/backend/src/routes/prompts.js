@@ -14,8 +14,8 @@ const PromptManager = require('../services/ai/PromptManager');
 router.get('/', async (req, res) => {
   try {
     // For now, use default tenant ID - will add auth later
-    const tenantId = req.headers['x-tenant-id'] || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
-    const promptManager = new PromptManager(tenantId);
+    const organizationId = req.headers['x-tenant-id'] || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const promptManager = new PromptManager(organizationId);
     const prompts = await promptManager.getAllPrompts();
     
     res.json({
@@ -38,8 +38,8 @@ router.get('/', async (req, res) => {
 router.get('/:key', async (req, res) => {
   try {
     const { key } = req.params;
-    const tenantId = req.headers['x-tenant-id'] || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
-    const promptManager = new PromptManager(tenantId);
+    const organizationId = req.headers['x-tenant-id'] || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const promptManager = new PromptManager(organizationId);
     
     const prompt = await promptManager.getPrompt(key);
     
@@ -82,8 +82,8 @@ router.post('/', async (req, res) => {
       });
     }
     
-    const tenantId = req.headers['x-tenant-id'] || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
-    const promptManager = new PromptManager(tenantId);
+    const organizationId = req.headers['x-tenant-id'] || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const promptManager = new PromptManager(organizationId);
     const savedPrompt = await promptManager.saveCustomPrompt(
       key,
       template,
@@ -111,8 +111,8 @@ router.post('/', async (req, res) => {
 router.delete('/:key', async (req, res) => {
   try {
     const { key } = req.params;
-    const tenantId = req.headers['x-tenant-id'] || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
-    const promptManager = new PromptManager(tenantId);
+    const organizationId = req.headers['x-tenant-id'] || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const promptManager = new PromptManager(organizationId);
     
     const success = await promptManager.resetToDefault(key);
     
@@ -151,8 +151,8 @@ router.post('/test', async (req, res) => {
       });
     }
     
-    const tenantId = req.headers['x-tenant-id'] || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
-    const promptManager = new PromptManager(tenantId);
+    const organizationId = req.headers['x-tenant-id'] || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const promptManager = new PromptManager(organizationId);
     
     // Test variable substitution
     const sampleVariables = {
@@ -194,8 +194,8 @@ router.post('/test', async (req, res) => {
  */
 router.get('/escalation/keywords', async (req, res) => {
   try {
-    const tenantId = req.headers['x-tenant-id'] || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
-    const promptManager = new PromptManager(tenantId);
+    const organizationId = req.headers['x-tenant-id'] || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const promptManager = new PromptManager(organizationId);
     const keywords = await promptManager.getEscalationKeywords();
     
     res.json({

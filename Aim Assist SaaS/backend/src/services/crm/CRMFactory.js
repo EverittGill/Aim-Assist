@@ -114,7 +114,7 @@ class CRMFactory {
       console.log('Mock CRM integration for organization:', organizationId);
       return {
         id: 'mock-integration',
-        tenant_id: organizationId,  // Keep as tenant_id for DB compatibility
+        organization_id: organizationId,  // Keep as organization_id for DB compatibility
         organization_id: organizationId,
         crm_type: 'fub',
         is_active: true,
@@ -180,7 +180,7 @@ class CRMFactory {
     // Store in vault (placeholder - needs Supabase Vault setup)
     const { data, error } = await supabase
       .rpc('store_crm_credentials', {
-        p_tenant_id: organizationId,  // Keep parameter name as expected by DB
+        p_organization_id: organizationId,  // Keep parameter name as expected by DB
         p_crm_type: crmType,
         p_credentials: credentials
       });
@@ -206,7 +206,7 @@ class CRMFactory {
         console.log('Mock integration created');
         return {
           id: 'mock-integration-' + Date.now(),
-          tenant_id: tenantId,
+          organization_id: organizationId,
           crm_type: crmType,
           vault_secret_id: vaultSecretId,
           is_active: true
@@ -217,7 +217,7 @@ class CRMFactory {
       const { data, error } = await supabase
         .from('crm_integrations')
         .upsert({
-          tenant_id: tenantId,
+          organization_id: organizationId,
           crm_type: crmType,
           vault_secret_id: vaultSecretId,
           config,
@@ -238,7 +238,7 @@ class CRMFactory {
   /**
    * Test CRM connection
    */
-  static async testConnection(tenantId, crmType, credentials) {
+  static async testConnection(organizationId, crmType, credentials) {
     try {
       // Create temporary adapter with provided credentials
       const AdapterClass = this.adapters[crmType.toLowerCase()];
@@ -247,7 +247,7 @@ class CRMFactory {
         throw new Error(`Unsupported CRM type: ${crmType}`);
       }
 
-      const adapter = new AdapterClass(tenantId, { credentials });
+      const adapter = new AdapterClass(organizationId, { credentials });
       return await adapter.testConnection();
     } catch (error) {
       console.error('Connection test failed:', error);
@@ -278,15 +278,15 @@ class CRMFactory {
   /**
    * Get adapter for multiple tenants (batch operation)
    */
-  static async getAdapters(tenantIds) {
+  static async getAdapters(organizationIds) {
     const adapters = {};
     
-    for (const tenantId of tenantIds) {
+    for (const organizationId of organizationIds) {
       try {
-        adapters[tenantId] = await this.getAdapter(tenantId);
+        adapters[organizationId] = await this.getAdapter(organizationId);
       } catch (error) {
-        console.error(`Failed to get adapter for tenant ${tenantId}:`, error);
-        adapters[tenantId] = null;
+        console.error(`Failed to get adapter for tenant ${organizationId}:`, error);
+        adapters[organizationId] = null;
       }
     }
     

@@ -49,7 +49,7 @@ console.log('🔐 Auth service initialized');
 
 // API Routes with service injection
 app.use('/api/auth', require('./routes/auth')(authService));
-app.use('/api/tenants', require('./routes/tenants'));
+app.use('/api/organizations', require('./routes/organizations'));
 app.use('/api/leads', require('./routes/leads')(authService));
 app.use('/api/conversations', require('./routes/conversations')(authService));
 app.use('/api/messages', require('./routes/conversations')(authService)); // Alias for frontend compatibility

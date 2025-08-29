@@ -14,9 +14,9 @@ const { authenticateToken } = require('../middleware/auth');
  */
 router.get('/rules', authenticateToken, async (req, res) => {
   try {
-    const tenantId = req.tenantId || req.query.tenant_id;
+    const organizationId = req.organizationId || req.organizationId || req.query.organization_id;
     
-    const rules = await AutoTextRulesService.getRules(tenantId);
+    const rules = await AutoTextRulesService.getRules(organizationId);
     
     res.json({
       success: true,
@@ -38,9 +38,9 @@ router.get('/rules', authenticateToken, async (req, res) => {
  */
 router.post('/rules', authenticateToken, async (req, res) => {
   try {
-    const tenantId = req.tenantId || req.body.tenant_id;
+    const organizationId = req.organizationId || req.organizationId || req.body.organization_id;
     
-    const rule = await AutoTextRulesService.createRule(tenantId, req.body);
+    const rule = await AutoTextRulesService.createRule(organizationId, req.body);
     
     res.json({
       success: true,
@@ -139,7 +139,7 @@ router.post('/rules/:id/test', async (req, res) => {
  */
 router.post('/create-defaults', authenticateToken, async (req, res) => {
   try {
-    const tenantId = req.tenantId || req.body.tenant_id;
+    const organizationId = req.organizationId || req.organizationId || req.body.organization_id;
     
     const defaultRules = [
       {
@@ -186,7 +186,7 @@ router.post('/create-defaults', authenticateToken, async (req, res) => {
     const created = [];
     for (const ruleData of defaultRules) {
       try {
-        const rule = await AutoTextRulesService.createRule(tenantId, ruleData);
+        const rule = await AutoTextRulesService.createRule(organizationId, ruleData);
         created.push(rule);
       } catch (err) {
         console.error(`Failed to create rule ${ruleData.name}:`, err);
@@ -213,7 +213,7 @@ router.post('/create-defaults', authenticateToken, async (req, res) => {
  */
 router.post('/apply-to-existing', authenticateToken, async (req, res) => {
   try {
-    const tenantId = req.tenantId || req.body.tenant_id;
+    const organizationId = req.organizationId || req.organizationId || req.body.organization_id;
     const leadIds = req.body.lead_ids; // Optional: specific leads to check
     const tag = req.body.tag; // Optional: only check leads with this tag
     
@@ -226,7 +226,7 @@ router.post('/apply-to-existing', authenticateToken, async (req, res) => {
     let query = supabase
       .from('leads')
       .select('*')
-      .eq('organization_id', tenantId)
+      .eq('organization_id', organizationId)
       .eq('ai_status', 'inactive'); // Only check inactive leads
     
     if (leadIds && leadIds.length > 0) {
@@ -245,7 +245,7 @@ router.post('/apply-to-existing', authenticateToken, async (req, res) => {
     
     const results = [];
     for (const lead of leads) {
-      const result = await AutoTextRulesService.checkAndApplyRules(tenantId, lead);
+      const result = await AutoTextRulesService.checkAndApplyRules(organizationId, lead);
       results.push({
         lead_id: lead.id,
         lead_name: `${lead.first_name} ${lead.last_name}`,
@@ -274,7 +274,7 @@ router.post('/apply-to-existing', authenticateToken, async (req, res) => {
  */
 router.get('/stats', authenticateToken, async (req, res) => {
   try {
-    const tenantId = req.tenantId || req.query.tenant_id;
+    const organizationId = req.organizationId || req.organizationId || req.query.organization_id;
     
     const { supabase } = require('../config/supabase');
     if (!supabase) {
@@ -285,7 +285,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
     const { data: rules, error: rulesError } = await supabase
       .from('auto_text_rules')
       .select('id, name, is_active, sends_count, responses_count, response_rate')
-      .eq('organization_id', tenantId);
+      .eq('organization_id', organizationId);
     
     if (rulesError) throw rulesError;
     
@@ -296,7 +296,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
     const { data: todayApps, error: appsError } = await supabase
       .from('auto_text_applications')
       .select('rule_id, status')
-      .eq('organization_id', tenantId)
+      .eq('organization_id', organizationId)
       .gte('created_at', startOfDay.toISOString());
     
     if (appsError) throw appsError;

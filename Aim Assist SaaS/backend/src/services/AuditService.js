@@ -7,8 +7,10 @@
 const { supabase } = require('../config/supabase');
 
 class AuditService {
-  constructor(tenantId) {
-    this.tenantId = tenantId;
+  constructor(organizationId) {
+    // Compatibility layer during migration
+    this.organizationId = organizationId;
+    this.organizationId = organizationId; // Keep for backward compatibility
     this.localStorage = new Map(); // Fallback for when Supabase isn't available
   }
 
@@ -17,7 +19,7 @@ class AuditService {
    */
   async logExtraction(data) {
     const auditEntry = {
-      organization_id: this.tenantId,
+      organization_id: this.organizationId,
       event_type: 'extraction',
       entity_type: 'lead',
       entity_id: data.leadId,
@@ -50,7 +52,7 @@ class AuditService {
    */
   async logCRMUpdate(data) {
     const auditEntry = {
-      organization_id: this.tenantId,
+      organization_id: this.organizationId,
       event_type: 'crm_update',
       entity_type: 'lead',
       entity_id: data.leadId,
@@ -80,7 +82,7 @@ class AuditService {
    */
   async logAIInteraction(data) {
     const auditEntry = {
-      organization_id: this.tenantId,
+      organization_id: this.organizationId,
       event_type: 'ai_interaction',
       entity_type: 'conversation',
       entity_id: data.conversationId,
@@ -112,7 +114,7 @@ class AuditService {
    */
   async logManualReview(data) {
     const auditEntry = {
-      organization_id: this.tenantId,
+      organization_id: this.organizationId,
       event_type: 'manual_review',
       entity_type: 'extraction',
       entity_id: data.extractionId,
@@ -141,7 +143,7 @@ class AuditService {
    */
   async logEscalation(data) {
     const auditEntry = {
-      organization_id: this.tenantId,
+      organization_id: this.organizationId,
       event_type: 'escalation',
       entity_type: 'lead',
       entity_id: data.leadId,
@@ -170,7 +172,7 @@ class AuditService {
    */
   async logDataAccess(data) {
     const auditEntry = {
-      organization_id: this.tenantId,
+      organization_id: this.organizationId,
       event_type: 'data_access',
       entity_type: data.entityType,
       entity_id: data.entityId,
@@ -251,7 +253,7 @@ class AuditService {
       let query = supabase
         .from('audit_logs')
         .select('*')
-        .eq('organization_id', this.tenantId);
+        .eq('organization_id', this.organizationId);
 
       if (filters.eventType) {
         query = query.eq('event_type', filters.eventType);
@@ -547,7 +549,7 @@ class AuditService {
       const { data, error } = await supabase
         .from('audit_logs')
         .delete()
-        .eq('organization_id', this.tenantId)
+        .eq('organization_id', this.organizationId)
         .lt('timestamp', cutoffDate.toISOString())
         .select();
       

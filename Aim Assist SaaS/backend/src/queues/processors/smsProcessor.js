@@ -8,13 +8,13 @@
 const TwilioService = require('../../services/messaging/TwilioService');
 const LeadService = require('../../services/LeadService');
 const ConversationService = require('../../services/ConversationService');
-const TenantService = require('../../services/TenantService');
+const OrganizationService = require('../../services/OrganizationService');
 const CRMFactory = require('../../services/crm/CRMFactory');
 
 module.exports = async function processSMS(job) {
   const {
     organizationId,
-    tenantId, // Keep for backward compatibility
+    organizationId, // Keep for backward compatibility
     leadId,
     to,
     message,
@@ -22,8 +22,8 @@ module.exports = async function processSMS(job) {
     messageId
   } = job.data;
   
-  // Use organizationId, fall back to tenantId for compatibility
-  const orgId = organizationId || tenantId;
+  // Use organizationId, fall back to organizationId for compatibility
+  const orgId = organizationId || organizationId;
   
   console.log(`\n📱 Processing SMS job ${job.id}:`, {
     organizationId: orgId,
@@ -45,8 +45,8 @@ module.exports = async function processSMS(job) {
       try {
         const adapter = await CRMFactory.getAdapter(orgId);
         // Get the actual phone number used by Twilio service
-        const TenantPhoneService = require('../../services/TenantPhoneService');
-        const fromPhone = await TenantPhoneService.getTenantPrimaryPhone(orgId) || 
+        const OrganizationPhoneService = require('../../services/OrganizationPhoneService');
+        const fromPhone = await OrganizationPhoneService.getTenantPrimaryPhone(orgId) || 
                          process.env.TWILIO_FROM_NUMBER || '+18662981158';
         
         console.log(`📞 Using from phone: ${fromPhone} for organization ${orgId}`);
@@ -122,7 +122,7 @@ module.exports = async function processSMS(job) {
     
     // Record usage for billing (optional)
     try {
-      await TenantService.recordUsage(orgId, 'sms_sent', 1, {
+      await OrganizationService.recordUsage(orgId, 'sms_sent', 1, {
         lead_id: leadId,
         message_id: messageId
       });

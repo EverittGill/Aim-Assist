@@ -31,7 +31,7 @@ const requireAuth = async (req, res, next) => {
 
     // Get tenant for this user
     const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
+      .from('organizations')
       .select('*')
       .eq('user_id', user.id)
       .single();
@@ -42,7 +42,7 @@ const requireAuth = async (req, res, next) => {
     }
 
     req.user = user;
-    req.tenantId = tenant.id;
+    req.organizationId = tenant.id;
     req.tenant = tenant;
     next();
   } catch (error) {
@@ -56,13 +56,13 @@ module.exports = (authService) => {
   // Get conversation history for a lead
   router.get('/:leadId', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.tenantId || 'demo-tenant';
+      const organizationId = req.organizationId || req.organizationId || 'demo-tenant';
       const leadId = req.params.leadId;
       
-      console.log(`Fetching conversation for lead ${leadId}, tenant ${tenantId}`);
+      console.log(`Fetching conversation for lead ${leadId}, tenant ${organizationId}`);
       
       // Get conversation history
-      const conversationService = new ConversationService(tenantId);
+      const conversationService = new ConversationService(organizationId);
       const messages = await conversationService.getHistory(leadId);
       
       res.json(messages);
@@ -78,7 +78,7 @@ module.exports = (authService) => {
   // Send a message
   router.post('/send', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.tenantId || 'demo-tenant';
+      const organizationId = req.organizationId || req.organizationId || 'demo-tenant';
       const { lead_id, content, type = 'sms' } = req.body;
       
       if (!lead_id || !content) {
@@ -88,7 +88,7 @@ module.exports = (authService) => {
       }
       
       // Get CRM type for dynamic field lookup
-      const adapter = await CRMFactory.getAdapter(tenantId);
+      const adapter = await CRMFactory.getAdapter(organizationId);
       const crmType = adapter.crmType || 'fub';
       const translator = new TranslationService(crmType);
       const crmIdField = translator.getCRMLeadIdField();
@@ -97,7 +97,7 @@ module.exports = (authService) => {
       const { data: lead, error: leadError } = await supabase
         .from('leads')
         .select('*')
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .or(`${crmIdField}.eq.${lead_id},id.eq.${lead_id}`)
         .single();
       
@@ -108,7 +108,7 @@ module.exports = (authService) => {
       }
       
       // Send SMS via Twilio
-      const twilioService = new TwilioService(tenantId);
+      const twilioService = new TwilioService(organizationId);
       const result = await twilioService.sendSMS(
         lead.phone, 
         content
@@ -117,7 +117,7 @@ module.exports = (authService) => {
       
       // Store message in Supabase FIRST (source of truth)
       try {
-        const conversationService = new ConversationService(tenantId);
+        const conversationService = new ConversationService(organizationId);
         const conversation = await conversationService.getOrCreateConversation(lead[crmIdField] || lead.id);
         await conversationService.addMessage(conversation.id, {
           lead_id: conversation.lead_id,
@@ -173,7 +173,7 @@ module.exports = (authService) => {
   // Generate AI message
   router.post('/generate', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.tenantId || 'demo-tenant';
+      const organizationId = req.organizationId || req.organizationId || 'demo-tenant';
       const { lead_id, conversation, template = 'conversation_reply' } = req.body;
       
       if (!lead_id) {
@@ -183,7 +183,7 @@ module.exports = (authService) => {
       }
       
       // Get CRM type for dynamic field lookup
-      const adapter = await CRMFactory.getAdapter(tenantId);
+      const adapter = await CRMFactory.getAdapter(organizationId);
       const crmType = adapter.crmType || 'fub';
       const translator = new TranslationService(crmType);
       const crmIdField = translator.getCRMLeadIdField();
@@ -192,7 +192,7 @@ module.exports = (authService) => {
       const { data: lead, error: leadError } = await supabase
         .from('leads')
         .select('*')
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .or(`${crmIdField}.eq.${lead_id},id.eq.${lead_id}`)
         .single();
       
@@ -213,7 +213,7 @@ module.exports = (authService) => {
       };
       
       // Generate AI response
-      const aiService = new AIService(tenantId);
+      const aiService = new AIService(organizationId);
       const response = await aiService.generateReply(context);
       
       res.json({ 

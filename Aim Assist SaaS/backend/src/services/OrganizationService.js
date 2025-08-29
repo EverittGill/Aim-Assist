@@ -7,10 +7,10 @@
  * - Support brokerage/agent hierarchy
  */
 
-const { supabase, withTenantContext } = require('../config/supabase');
+const { supabase, withOrganizationContext } = require('../config/supabase');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-class TenantService {
+class OrganizationService {
   /**
    * Create a new tenant
    * Sets up trial period and Stripe customer
@@ -74,7 +74,7 @@ class TenantService {
       }
 
       const { data: tenant, error } = await supabase
-        .from('tenants')
+        .from('organizations')
         .insert([tenantData])
         .select()
         .single();
@@ -91,11 +91,11 @@ class TenantService {
   /**
    * Get tenant by ID
    */
-  static async getById(tenantId) {
+  static async getById(organizationId) {
     try {
       if (!supabase) {
         return {
-          id: tenantId,
+          id: organizationId,
           name: 'Mock Tenant',
           subdomain: 'mock',
           subscription_status: 'trial',
@@ -104,9 +104,9 @@ class TenantService {
       }
 
       const { data: tenant, error } = await supabase
-        .from('tenants')
+        .from('organizations')
         .select('*')
-        .eq('id', tenantId)
+        .eq('id', organizationId)
         .single();
 
       if (error) throw error;
@@ -133,7 +133,7 @@ class TenantService {
       }
 
       const { data: tenant, error } = await supabase
-        .from('tenants')
+        .from('organizations')
         .select('*')
         .eq('subdomain', subdomain.toLowerCase())
         .single();
@@ -149,18 +149,18 @@ class TenantService {
   /**
    * Update tenant settings
    */
-  static async updateSettings(tenantId, settings) {
+  static async updateSettings(organizationId, settings) {
     try {
       if (!supabase) {
         console.log('Mock settings update:', settings);
-        return { id: tenantId, settings };
+        return { id: organizationId, settings };
       }
 
       // Merge with existing settings
       const { data: current, error: fetchError } = await supabase
-        .from('tenants')
+        .from('organizations')
         .select('settings')
-        .eq('id', tenantId)
+        .eq('id', organizationId)
         .single();
 
       if (fetchError) throw fetchError;
@@ -171,9 +171,9 @@ class TenantService {
       };
 
       const { data: tenant, error } = await supabase
-        .from('tenants')
+        .from('organizations')
         .update({ settings: updatedSettings })
-        .eq('id', tenantId)
+        .eq('id', organizationId)
         .select()
         .single();
 
@@ -188,7 +188,7 @@ class TenantService {
   /**
    * Check if tenant has exceeded usage limits
    */
-  static async checkUsageLimit(tenantId, metricType) {
+  static async checkUsageLimit(organizationId, metricType) {
     try {
       if (!supabase) {
         return {
@@ -202,7 +202,7 @@ class TenantService {
       // Call the database function
       const { data, error } = await supabase
         .rpc('check_usage_limit', {
-          p_tenant_id: tenantId,
+          p_organization_id: organizationId,
           p_metric_type: metricType
         });
 
@@ -222,10 +222,10 @@ class TenantService {
   /**
    * Record usage metric
    */
-  static async recordUsage(tenantId, metricType, quantity = 1, metadata = {}) {
+  static async recordUsage(organizationId, metricType, quantity = 1, metadata = {}) {
     try {
       if (!supabase) {
-        console.log('Mock usage recorded:', { tenantId, metricType, quantity });
+        console.log('Mock usage recorded:', { organizationId, metricType, quantity });
         return { success: true };
       }
 
@@ -236,7 +236,7 @@ class TenantService {
       const { data, error } = await supabase
         .from('usage_metrics')
         .insert([{
-          tenant_id: tenantId,
+          organization_id: organizationId,
           metric_type: metricType,
           quantity,
           billing_period_start: billingPeriodStart,
@@ -272,7 +272,7 @@ class TenantService {
       }
 
       let query = supabase
-        .from('tenants')
+        .from('organizations')
         .select('*')
         .is('deleted_at', null);
 
@@ -297,21 +297,21 @@ class TenantService {
   /**
    * Upgrade tenant subscription
    */
-  static async upgradeSubscription(tenantId, plan) {
+  static async upgradeSubscription(organizationId, plan) {
     try {
       if (!supabase) {
-        console.log('Mock subscription upgrade:', { tenantId, plan });
+        console.log('Mock subscription upgrade:', { organizationId, plan });
         return { success: true, plan };
       }
 
       const { data: tenant, error } = await supabase
-        .from('tenants')
+        .from('organizations')
         .update({
           subscription_plan: plan,
           subscription_status: 'active',
           trial_ends_at: null
         })
-        .eq('id', tenantId)
+        .eq('id', organizationId)
         .select()
         .single();
 
@@ -329,20 +329,20 @@ class TenantService {
   /**
    * Cancel tenant subscription
    */
-  static async cancelSubscription(tenantId, reason) {
+  static async cancelSubscription(organizationId, reason) {
     try {
       if (!supabase) {
-        console.log('Mock subscription cancelled:', { tenantId, reason });
+        console.log('Mock subscription cancelled:', { organizationId, reason });
         return { success: true };
       }
 
       const { data: tenant, error } = await supabase
-        .from('tenants')
+        .from('organizations')
         .update({
           subscription_status: 'cancelled',
           subscription_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days grace period
         })
-        .eq('id', tenantId)
+        .eq('id', organizationId)
         .select()
         .single();
 
@@ -377,7 +377,7 @@ class TenantService {
         email,
         phone,
         type: 'brokerage',
-        parent_tenant_id: null,
+        parent_organization_id: null,
         slug: name.toLowerCase().replace(/\s+/g, '-'),
         subdomain: name.toLowerCase().replace(/\s+/g, '-'),
         subscription_status: 'active',
@@ -404,7 +404,7 @@ class TenantService {
       }
 
       const { data: tenant, error } = await supabase
-        .from('tenants')
+        .from('organizations')
         .insert(tenantData)
         .select()
         .single();
@@ -444,7 +444,7 @@ class TenantService {
         email,
         phone,
         type: 'agent',
-        parent_tenant_id: brokerageId,
+        parent_organization_id: brokerageId,
         slug: name.toLowerCase().replace(/\s+/g, '-'),
         subdomain: name.toLowerCase().replace(/\s+/g, '-'),
         subscription_status: 'active', // Inherits from brokerage
@@ -467,7 +467,7 @@ class TenantService {
       }
 
       const { data: agent, error } = await supabase
-        .from('tenants')
+        .from('organizations')
         .insert(agentData)
         .select()
         .single();
@@ -486,17 +486,17 @@ class TenantService {
   /**
    * Get tenant configuration (handles hierarchy)
    */
-  static async getTenantConfig(tenantId) {
+  static async getTenantConfig(organizationId) {
     try {
-      const tenant = await this.getById(tenantId);
+      const tenant = await this.getById(organizationId);
       
       if (!tenant) {
         throw new Error('Tenant not found');
       }
       
       // If agent, merge with brokerage settings
-      if (tenant.type === 'agent' && tenant.parent_tenant_id) {
-        const brokerage = await this.getById(tenant.parent_tenant_id);
+      if (tenant.type === 'agent' && tenant.parent_organization_id) {
+        const brokerage = await this.getById(tenant.parent_organization_id);
         
         if (brokerage) {
           // Agent settings override brokerage defaults
@@ -519,9 +519,9 @@ class TenantService {
   /**
    * Check if a lead should sync to Supabase based on tags
    */
-  static async shouldSyncLead(tenantId, leadTags = []) {
+  static async shouldSyncLead(organizationId, leadTags = []) {
     try {
-      const config = await this.getTenantConfig(tenantId);
+      const config = await this.getTenantConfig(organizationId);
       const requiredTags = config.settings?.lead_sync_tags || [];
       
       if (requiredTags.length === 0) {
@@ -557,9 +557,9 @@ class TenantService {
       }
 
       const { data: agents } = await supabase
-        .from('tenants')
+        .from('organizations')
         .select('*')
-        .eq('parent_tenant_id', brokerageId)
+        .eq('parent_organization_id', brokerageId)
         .eq('type', 'agent')
         .eq('status', 'active');
       
@@ -584,7 +584,7 @@ class TenantService {
       const normalized = phoneNumber.replace(/\D/g, '');
       
       const { data: tenants } = await supabase
-        .from('tenants')
+        .from('organizations')
         .select('*');
       
       // Search in settings JSON field
@@ -602,4 +602,4 @@ class TenantService {
   }
 }
 
-module.exports = TenantService;
+module.exports = OrganizationService;

@@ -6,12 +6,20 @@
 const CRMSyncService = require('../../services/CRMSyncService');
 
 module.exports = async function processLeadSync(job) {
-  const { tenantId, syncType = 'full', sinceMinutes = 15 } = job.data;
+  const { 
+    organizationId, 
+    organizationId, // Accept both during migration
+    syncType = 'full', 
+    sinceMinutes = 15 
+  } = job.data;
   
-  console.log(`🔄 Processing ${syncType} lead sync job ${job.id} for tenant ${tenantId}`);
+  // Use organizationId if provided, fallback to organizationId
+  const orgId = organizationId || organizationId;
+  
+  console.log(`🔄 Processing ${syncType} lead sync job ${job.id} for tenant ${orgId}`);
   
   try {
-    const syncService = new CRMSyncService(tenantId);
+    const syncService = new CRMSyncService(orgId);
     
     let result;
     if (syncType === 'incremental') {

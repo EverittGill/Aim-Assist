@@ -7,8 +7,8 @@
 const CRMAdapter = require('../CRMAdapter');
 
 class LoftyAdapter extends CRMAdapter {
-  constructor(tenantId, config) {
-    super(tenantId, config);
+  constructor(organizationId, config) {
+    super(organizationId, config);
     
     // Lofty-specific configuration
     this.baseUrl = 'https://api.lofty.com/v1'; // Placeholder

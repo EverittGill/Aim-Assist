@@ -9,7 +9,7 @@ class SyncScheduler {
   /**
    * Initialize sync schedules for a tenant
    */
-  static async initializeForTenant(tenantId, config = {}) {
+  static async initializeForTenant(organizationId, config = {}) {
     const {
       enableIncrementalSync = true,
       incrementalIntervalMinutes = 15,
@@ -17,20 +17,20 @@ class SyncScheduler {
       dailyFullSyncHour = 2, // 2 AM
     } = config;
     
-    console.log(`⏰ Initializing sync schedule for tenant ${tenantId}`);
+    console.log(`⏰ Initializing sync schedule for tenant ${organizationId}`);
     
     try {
       // Schedule incremental sync every 15 minutes
       if (enableIncrementalSync) {
-        await this.scheduleIncrementalSync(tenantId, incrementalIntervalMinutes);
+        await this.scheduleIncrementalSync(organizationId, incrementalIntervalMinutes);
       }
       
       // Schedule daily full sync at 2 AM
       if (enableDailyFullSync) {
-        await this.scheduleDailyFullSync(tenantId, dailyFullSyncHour);
+        await this.scheduleDailyFullSync(organizationId, dailyFullSyncHour);
       }
       
-      console.log(`✅ Sync schedules initialized for tenant ${tenantId}`);
+      console.log(`✅ Sync schedules initialized for tenant ${organizationId}`);
       return true;
       
     } catch (error) {
@@ -42,15 +42,15 @@ class SyncScheduler {
   /**
    * Schedule incremental sync
    */
-  static async scheduleIncrementalSync(tenantId, intervalMinutes = 15) {
-    const jobId = `incremental-sync-${tenantId}`;
+  static async scheduleIncrementalSync(organizationId, intervalMinutes = 15) {
+    const jobId = `incremental-sync-${organizationId}`;
     
     // Remove existing job if any
     await this.removeScheduledJob('lead-sync', jobId);
     
     // Add repeatable job
     const job = await QueueManager.addJob('lead-sync', {
-      tenantId,
+      organizationId,
       syncType: 'incremental',
       sinceMinutes: intervalMinutes
     }, {
@@ -60,15 +60,15 @@ class SyncScheduler {
       jobId // Use consistent ID for repeatable job
     });
     
-    console.log(`📅 Scheduled incremental sync every ${intervalMinutes} minutes for tenant ${tenantId}`);
+    console.log(`📅 Scheduled incremental sync every ${intervalMinutes} minutes for tenant ${organizationId}`);
     return job;
   }
   
   /**
    * Schedule daily full sync
    */
-  static async scheduleDailyFullSync(tenantId, hour = 2) {
-    const jobId = `daily-full-sync-${tenantId}`;
+  static async scheduleDailyFullSync(organizationId, hour = 2) {
+    const jobId = `daily-full-sync-${organizationId}`;
     
     // Remove existing job if any
     await this.removeScheduledJob('lead-sync', jobId);
@@ -79,7 +79,7 @@ class SyncScheduler {
     
     // Add repeatable job with cron
     const job = await QueueManager.addJob('lead-sync', {
-      tenantId,
+      organizationId,
       syncType: 'full'
     }, {
       repeat: {
@@ -89,7 +89,7 @@ class SyncScheduler {
       jobId // Use consistent ID for repeatable job
     });
     
-    console.log(`📅 Scheduled daily full sync at ${hour}:00 AM for tenant ${tenantId}`);
+    console.log(`📅 Scheduled daily full sync at ${hour}:00 AM for tenant ${organizationId}`);
     return job;
   }
   
@@ -121,7 +121,7 @@ class SyncScheduler {
   /**
    * Get all scheduled sync jobs for a tenant
    */
-  static async getScheduledJobs(tenantId) {
+  static async getScheduledJobs(organizationId) {
     try {
       const queue = QueueManager.queues['lead-sync'];
       if (!queue) return [];
@@ -130,7 +130,7 @@ class SyncScheduler {
       
       // Filter jobs for this tenant
       const tenantJobs = repeatableJobs.filter(job => {
-        return job.id && job.id.includes(tenantId);
+        return job.id && job.id.includes(organizationId);
       });
       
       return tenantJobs.map(job => ({
@@ -150,15 +150,15 @@ class SyncScheduler {
   /**
    * Pause all sync schedules for a tenant
    */
-  static async pauseSchedules(tenantId) {
+  static async pauseSchedules(organizationId) {
     try {
-      const jobs = await this.getScheduledJobs(tenantId);
+      const jobs = await this.getScheduledJobs(organizationId);
       
       for (const job of jobs) {
         await this.removeScheduledJob('lead-sync', job.id);
       }
       
-      console.log(`⏸️ Paused all sync schedules for tenant ${tenantId}`);
+      console.log(`⏸️ Paused all sync schedules for tenant ${organizationId}`);
       return true;
       
     } catch (error) {
@@ -170,8 +170,8 @@ class SyncScheduler {
   /**
    * Resume sync schedules for a tenant
    */
-  static async resumeSchedules(tenantId, config = {}) {
-    return await this.initializeForTenant(tenantId, config);
+  static async resumeSchedules(organizationId, config = {}) {
+    return await this.initializeForTenant(organizationId, config);
   }
   
   /**
@@ -188,7 +188,7 @@ class SyncScheduler {
       
       // Get all active tenants
       const { data: tenants, error } = await supabase
-        .from('tenants')
+        .from('organizations')
         .select('id, settings')
         .eq('is_active', true);
       

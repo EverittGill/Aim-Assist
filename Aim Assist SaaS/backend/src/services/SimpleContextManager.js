@@ -1,6 +1,6 @@
 /**
  * Simple Context Manager for Multi-Tenant System
- * Works with new database schema (organization_id, not tenant_id)
+ * Works with new database schema (organization_id, not organization_id)
  * Provides conversation history and extracted facts to AI
  */
 

@@ -1,12 +1,12 @@
 /**
- * TenantService - Manages all tenant-related database operations
+ * OrganizationService - Manages all tenant-related database operations
  * Uses service role to bypass RLS when needed
  * Provides tenant context for all operations
  */
 
 const { supabase } = require('../../config/supabase');
 
-class TenantService {
+class OrganizationService {
   constructor() {
     this.supabase = supabase;
     this.tenantCache = new Map(); // Simple in-memory cache
@@ -16,20 +16,20 @@ class TenantService {
   /**
    * Get tenant by ID with caching
    */
-  async getTenantById(tenantId) {
+  async getTenantById(organizationId) {
     try {
       // Check cache first
-      const cached = this.tenantCache.get(tenantId);
+      const cached = this.tenantCache.get(organizationId);
       if (cached && cached.expires > Date.now()) {
-        console.log(`✅ Tenant ${tenantId} loaded from cache`);
+        console.log(`✅ Tenant ${organizationId} loaded from cache`);
         return cached.data;
       }
 
       // Query database
       const { data, error } = await this.supabase
-        .from('tenants')
+        .from('organizations')
         .select('*')
-        .eq('id', tenantId)
+        .eq('id', organizationId)
         .single();
 
       if (error) {
@@ -43,7 +43,7 @@ class TenantService {
       }
 
       // Update cache
-      this.tenantCache.set(tenantId, {
+      this.tenantCache.set(organizationId, {
         data,
         expires: Date.now() + this.cacheTimeout
       });
@@ -51,7 +51,7 @@ class TenantService {
       console.log(`✅ Tenant ${data.name} loaded from database`);
       return data;
     } catch (error) {
-      console.error('❌ TenantService.getTenantById error:', error);
+      console.error('❌ OrganizationService.getTenantById error:', error);
       throw error;
     }
   }
@@ -62,7 +62,7 @@ class TenantService {
   async getTenantBySlug(slug) {
     try {
       const { data, error } = await this.supabase
-        .from('tenants')
+        .from('organizations')
         .select('*')
         .eq('slug', slug)
         .eq('is_active', true)
@@ -77,7 +77,7 @@ class TenantService {
 
       return data;
     } catch (error) {
-      console.error('❌ TenantService.getTenantBySlug error:', error);
+      console.error('❌ OrganizationService.getTenantBySlug error:', error);
       throw error;
     }
   }
@@ -85,9 +85,9 @@ class TenantService {
   /**
    * Validate tenant is active and within limits
    */
-  async validateTenantStatus(tenantId) {
+  async validateTenantStatus(organizationId) {
     try {
-      const tenant = await this.getTenantById(tenantId);
+      const tenant = await this.getTenantById(organizationId);
       
       if (!tenant) {
         return { valid: false, reason: 'Tenant not found' };
@@ -111,7 +111,7 @@ class TenantService {
 
       return { valid: true, tenant };
     } catch (error) {
-      console.error('❌ TenantService.validateTenantStatus error:', error);
+      console.error('❌ OrganizationService.validateTenantStatus error:', error);
       return { valid: false, reason: 'System error' };
     }
   }
@@ -119,12 +119,12 @@ class TenantService {
   /**
    * Get tenant's CRM integrations
    */
-  async getCRMIntegrations(tenantId) {
+  async getCRMIntegrations(organizationId) {
     try {
       const { data, error } = await this.supabase
         .from('crm_integrations')
         .select('*')
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .eq('is_active', true);
 
       if (error) {
@@ -134,7 +134,7 @@ class TenantService {
 
       return data || [];
     } catch (error) {
-      console.error('❌ TenantService.getCRMIntegrations error:', error);
+      console.error('❌ OrganizationService.getCRMIntegrations error:', error);
       return [];
     }
   }
@@ -142,12 +142,12 @@ class TenantService {
   /**
    * Get tenant's communication channels (Twilio numbers)
    */
-  async getCommunicationChannels(tenantId) {
+  async getCommunicationChannels(organizationId) {
     try {
       const { data, error } = await this.supabase
         .from('communication_channels')
         .select('*')
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .eq('is_active', true);
 
       if (error) {
@@ -157,7 +157,7 @@ class TenantService {
 
       return data || [];
     } catch (error) {
-      console.error('❌ TenantService.getCommunicationChannels error:', error);
+      console.error('❌ OrganizationService.getCommunicationChannels error:', error);
       return [];
     }
   }
@@ -165,12 +165,12 @@ class TenantService {
   /**
    * Get tenant's AI configuration
    */
-  async getAIConfiguration(tenantId) {
+  async getAIConfiguration(organizationId) {
     try {
       const { data, error } = await this.supabase
         .from('ai_configurations')
         .select('*')
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .eq('is_active', true)
         .order('is_default', { ascending: false })
         .limit(1)
@@ -187,7 +187,7 @@ class TenantService {
 
       return data;
     } catch (error) {
-      console.error('❌ TenantService.getAIConfiguration error:', error);
+      console.error('❌ OrganizationService.getAIConfiguration error:', error);
       return this.getDefaultAIConfiguration();
     }
   }
@@ -211,13 +211,13 @@ class TenantService {
   /**
    * Update tenant usage metrics
    */
-  async incrementUsage(tenantId, metricType, quantity = 1) {
+  async incrementUsage(organizationId, metricType, quantity = 1) {
     try {
       // Record in usage_tracking table
       const { error } = await this.supabase
         .from('usage_tracking')
         .insert({
-          organization_id: tenantId,
+          organization_id: organizationId,
           metric_type: metricType,
           quantity: quantity,
           created_at: new Date().toISOString()
@@ -228,7 +228,7 @@ class TenantService {
         // Don't throw - usage tracking shouldn't break the app
       }
     } catch (error) {
-      console.error('⚠️ TenantService.incrementUsage error:', error);
+      console.error('⚠️ OrganizationService.incrementUsage error:', error);
       // Don't throw - usage tracking shouldn't break the app
     }
   }
@@ -236,9 +236,9 @@ class TenantService {
   /**
    * Check if tenant has exceeded limits
    */
-  async checkUsageLimits(tenantId, metricType) {
+  async checkUsageLimits(organizationId, metricType) {
     try {
-      const tenant = await this.getTenantById(tenantId);
+      const tenant = await this.getTenantById(organizationId);
       
       // Get current month's usage
       const startOfMonth = new Date();
@@ -248,7 +248,7 @@ class TenantService {
       const { data, error } = await this.supabase
         .from('usage_tracking')
         .select('quantity')
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .eq('metric_type', metricType)
         .gte('created_at', startOfMonth.toISOString());
 
@@ -274,7 +274,7 @@ class TenantService {
         remaining: Math.max(0, limit - totalUsage)
       };
     } catch (error) {
-      console.error('❌ TenantService.checkUsageLimits error:', error);
+      console.error('❌ OrganizationService.checkUsageLimits error:', error);
       return { withinLimits: true }; // Fail open
     }
   }
@@ -282,9 +282,9 @@ class TenantService {
   /**
    * Clear tenant cache (useful after updates)
    */
-  clearCache(tenantId = null) {
-    if (tenantId) {
-      this.tenantCache.delete(tenantId);
+  clearCache(organizationId = null) {
+    if (organizationId) {
+      this.tenantCache.delete(organizationId);
     } else {
       this.tenantCache.clear();
     }
@@ -292,4 +292,4 @@ class TenantService {
 }
 
 // Export singleton instance
-module.exports = new TenantService();
+module.exports = new OrganizationService();

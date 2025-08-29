@@ -10,7 +10,7 @@ const CRMFactory = require('./crm/CRMFactory');
 class ConversationSyncService {
   constructor(organizationId) {
     this.organizationId = organizationId;
-    this.tenantId = organizationId; // Keep for backward compatibility
+    this.organizationId = organizationId; // Keep for backward compatibility
   }
 
   /**

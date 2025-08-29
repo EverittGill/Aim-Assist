@@ -6,7 +6,7 @@
 
 const { supabase } = require('../config/supabase');
 
-class TenantPhoneService {
+class OrganizationPhoneService {
   constructor() {
     // Cache phone-to-tenant mappings for performance
     this.phoneCache = new Map();
@@ -28,8 +28,8 @@ class TenantPhoneService {
     // Check cache first
     const cached = this.phoneCache.get(normalizedPhone);
     if (cached && cached.expires > Date.now()) {
-      console.log(`📱 Cache hit: ${normalizedPhone} → Organization ${cached.tenantId}`);
-      return cached.tenantId;
+      console.log(`📱 Cache hit: ${normalizedPhone} → Organization ${cached.organizationId}`);
+      return cached.organizationId;
     }
 
     try {
@@ -52,7 +52,7 @@ class TenantPhoneService {
         if (data2 && data2.length > 0) {
           // Cache the result
           this.phoneCache.set(normalizedPhone, {
-            tenantId: data2[0].id,
+            organizationId: data2[0].id,
             expires: Date.now() + this.cacheTimeout
           });
           console.log(`✅ Found organization ${data2[0].id} for phone ${twilioPhoneNumber}`);
@@ -66,7 +66,7 @@ class TenantPhoneService {
       // Cache the result (use first org if multiple have same phone)
       const orgId = data[0].id;
       this.phoneCache.set(normalizedPhone, {
-        tenantId: orgId,
+        organizationId: orgId,
         expires: Date.now() + this.cacheTimeout
       });
 
@@ -82,17 +82,17 @@ class TenantPhoneService {
   /**
    * Get tenant's primary phone number for outbound messages
    */
-  async getTenantPrimaryPhone(tenantId) {
+  async getTenantPrimaryPhone(organizationId) {
     try {
       // Get phone number from organizations table
       const { data, error } = await supabase
         .from('organizations')
         .select('ai_phone_number')
-        .eq('id', tenantId)
+        .eq('id', organizationId)
         .single();
 
       if (error || !data || !data.ai_phone_number) {
-        throw new Error(`No AI phone number found for organization ${tenantId}`);
+        throw new Error(`No AI phone number found for organization ${organizationId}`);
       }
 
       return data.ai_phone_number;
@@ -106,7 +106,7 @@ class TenantPhoneService {
   /**
    * Assign a phone number to a tenant
    */
-  async assignPhoneToTenant(phoneNumber, tenantId, options = {}) {
+  async assignPhoneToTenant(phoneNumber, organizationId, options = {}) {
     const {
       isPrimary = false,
       twilioSid = null,
@@ -117,11 +117,11 @@ class TenantPhoneService {
       // Check if phone is already assigned
       const { data: existing } = await supabase
         .from('phone_numbers')
-        .select('tenant_id')
+        .select('organization_id')
         .eq('phone_number', this.normalizePhone(phoneNumber))
         .single();
 
-      if (existing && existing.tenant_id !== tenantId) {
+      if (existing && existing.organization_id !== organizationId) {
         throw new Error(`Phone ${phoneNumber} is already assigned to another tenant`);
       }
 
@@ -130,14 +130,14 @@ class TenantPhoneService {
         await supabase
           .from('phone_numbers')
           .update({ is_primary: false })
-          .eq('organization_id', tenantId);
+          .eq('organization_id', organizationId);
       }
 
       // Insert or update phone assignment
       const normalizedPhone = this.normalizePhone(phoneNumber);
       
       // If phone exists for this tenant, update it; otherwise insert
-      if (existing && existing.tenant_id === tenantId) {
+      if (existing && existing.organization_id === organizationId) {
         // Update existing assignment
         const { data, error } = await supabase
           .from('phone_numbers')
@@ -149,7 +149,7 @@ class TenantPhoneService {
             updated_at: new Date()
           })
           .eq('phone_number', normalizedPhone)
-          .eq('organization_id', tenantId)
+          .eq('organization_id', organizationId)
           .select()
           .single();
         
@@ -158,7 +158,7 @@ class TenantPhoneService {
         // Clear cache for this phone
         this.phoneCache.delete(normalizedPhone);
         
-        console.log(`✅ Updated phone ${phoneNumber} for tenant ${tenantId}`);
+        console.log(`✅ Updated phone ${phoneNumber} for tenant ${organizationId}`);
         return data;
       } else {
         // Insert new assignment
@@ -166,7 +166,7 @@ class TenantPhoneService {
           .from('phone_numbers')
           .insert({
             phone_number: normalizedPhone,
-            organization_id: tenantId,
+            organization_id: organizationId,
             is_primary: isPrimary,
             provider_sid: twilioSid,
             capabilities: capabilities,
@@ -181,7 +181,7 @@ class TenantPhoneService {
         // Clear cache for this phone
         this.phoneCache.delete(normalizedPhone);
         
-        console.log(`✅ Phone ${phoneNumber} assigned to tenant ${tenantId}`);
+        console.log(`✅ Phone ${phoneNumber} assigned to tenant ${organizationId}`);
         return data;
       }
 
@@ -194,12 +194,12 @@ class TenantPhoneService {
   /**
    * Get all phone numbers for a tenant
    */
-  async getTenantPhones(tenantId) {
+  async getTenantPhones(organizationId) {
     try {
       const { data, error } = await supabase
         .from('phone_numbers')
         .select('*')
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .order('is_primary', { ascending: false });
 
       if (error) throw error;
@@ -215,21 +215,21 @@ class TenantPhoneService {
   /**
    * Release a phone number from a tenant
    */
-  async releasePhone(phoneNumber, tenantId) {
+  async releasePhone(phoneNumber, organizationId) {
     try {
       // Delete the phone assignment completely
       const { error } = await supabase
         .from('phone_numbers')
         .delete()
         .eq('phone_number', this.normalizePhone(phoneNumber))
-        .eq('organization_id', tenantId);
+        .eq('organization_id', organizationId);
 
       if (error) throw error;
 
       // Clear cache
       this.phoneCache.delete(this.normalizePhone(phoneNumber));
 
-      console.log(`📱 Released phone ${phoneNumber} from tenant ${tenantId}`);
+      console.log(`📱 Released phone ${phoneNumber} from tenant ${organizationId}`);
       return true;
 
     } catch (error) {
@@ -241,12 +241,12 @@ class TenantPhoneService {
   /**
    * Validate that a tenant owns a specific phone number
    */
-  async validateTenantOwnsPhone(tenantId, phoneNumber) {
+  async validateTenantOwnsPhone(organizationId, phoneNumber) {
     try {
       const { data, error } = await supabase
         .from('phone_numbers')
         .select('id')
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .eq('phone_number', this.normalizePhone(phoneNumber))
         .eq('is_active', true)
         .single();
@@ -291,15 +291,15 @@ class TenantPhoneService {
 }
 
 // Create singleton instance
-const instance = new TenantPhoneService();
+const instance = new OrganizationPhoneService();
 
 // Add static method for webhook usage
-TenantPhoneService.getTenantFromPhone = async function(phoneNumber) {
+OrganizationPhoneService.getTenantFromPhone = async function(phoneNumber) {
   return instance.getTenantFromPhone(phoneNumber);
 };
 
-TenantPhoneService.getTenantPrimaryPhone = async function(tenantId) {
-  return instance.getTenantPrimaryPhone(tenantId);
+OrganizationPhoneService.getTenantPrimaryPhone = async function(organizationId) {
+  return instance.getTenantPrimaryPhone(organizationId);
 };
 
 // Export as singleton

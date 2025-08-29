@@ -35,35 +35,35 @@ const supabase = process.env.SUPABASE_URL &&
 /**
  * Set the current tenant context for RLS policies
  * Must be called before any database operations
- * @param {string} tenantId - UUID of the current tenant
+ * @param {string} organizationId - UUID of the current organization
  */
-async function setTenantContext(tenantId) {
+async function setOrganizationContext(organizationId) {
   if (!supabase) {
     throw new Error('Supabase client not initialized');
   }
   
   // Set the tenant context for Row Level Security
   const { error } = await supabase.rpc('set_config', {
-    parameter: 'app.current_tenant_id',
-    value: tenantId
+    parameter: 'app.current_organization_id',
+    value: organizationId
   });
   
   if (error) {
-    throw new Error(`Failed to set tenant context: ${error.message}`);
+    throw new Error(`Failed to set organization context: ${error.message}`);
   }
 }
 
 /**
  * Execute a database query with tenant isolation
- * @param {string} tenantId - UUID of the current tenant
+ * @param {string} organizationId - UUID of the current organization
  * @param {Function} queryFn - Function that executes the query
  */
-async function withTenantContext(tenantId, queryFn) {
+async function withOrganizationContext(organizationId, queryFn) {
   if (!supabase) {
     throw new Error('Supabase client not initialized');
   }
   
-  await setTenantContext(tenantId);
+  await setOrganizationContext(organizationId);
   return queryFn(supabase);
 }
 
@@ -77,7 +77,7 @@ async function testConnection() {
   }
   
   try {
-    const { error } = await supabase.from('tenants').select('count').limit(1);
+    const { error } = await supabase.from('organizations').select('count').limit(1);
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned (which is fine)
       console.error('Database connection test failed:', error);
       return false;
@@ -91,7 +91,7 @@ async function testConnection() {
 
 module.exports = {
   supabase,
-  setTenantContext,
-  withTenantContext,
+  setOrganizationContext,
+  withOrganizationContext,
   testConnection
 };

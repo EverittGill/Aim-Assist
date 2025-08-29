@@ -14,13 +14,13 @@ const QueueManager = require('../queues/QueueManager').default;
  */
 router.post('/full', async (req, res) => {
   try {
-    const tenantId = req.body.tenant_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1'; // Demo tenant
+    const organizationId = req.body.organization_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1'; // Demo tenant
     
-    console.log(`📥 Full sync requested for tenant ${tenantId}`);
+    console.log(`📥 Full sync requested for tenant ${organizationId}`);
     
     // Queue the sync job
     const job = await QueueManager.addJob('lead-sync', {
-      tenantId,
+      organizationId,
       syncType: 'full'
     });
     
@@ -28,7 +28,7 @@ router.post('/full', async (req, res) => {
       success: true,
       message: 'Full sync queued',
       job_id: job.id,
-      tenant_id: tenantId
+      organization_id: organizationId
     });
   } catch (error) {
     console.error('Error queuing full sync:', error);
@@ -45,14 +45,14 @@ router.post('/full', async (req, res) => {
  */
 router.post('/incremental', async (req, res) => {
   try {
-    const tenantId = req.body.tenant_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const organizationId = req.body.organization_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
     const sinceMinutes = req.body.since_minutes || 15;
     
-    console.log(`📥 Incremental sync requested for tenant ${tenantId} (last ${sinceMinutes} minutes)`);
+    console.log(`📥 Incremental sync requested for tenant ${organizationId} (last ${sinceMinutes} minutes)`);
     
     // Queue the sync job
     const job = await QueueManager.addJob('lead-sync', {
-      tenantId,
+      organizationId,
       syncType: 'incremental',
       sinceMinutes
     });
@@ -61,7 +61,7 @@ router.post('/incremental', async (req, res) => {
       success: true,
       message: 'Incremental sync queued',
       job_id: job.id,
-      tenant_id: tenantId,
+      organization_id: organizationId,
       since_minutes: sinceMinutes
     });
   } catch (error) {
@@ -79,12 +79,12 @@ router.post('/incremental', async (req, res) => {
  */
 router.post('/lead/:id', async (req, res) => {
   try {
-    const tenantId = req.body.tenant_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const organizationId = req.body.organization_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
     const leadId = req.params.id;
     
-    console.log(`📥 Single lead sync requested: ${leadId} for tenant ${tenantId}`);
+    console.log(`📥 Single lead sync requested: ${leadId} for tenant ${organizationId}`);
     
-    const syncService = new CRMSyncService(tenantId);
+    const syncService = new CRMSyncService(organizationId);
     const result = await syncService.syncSingleLead(leadId);
     
     res.json({
@@ -107,9 +107,9 @@ router.post('/lead/:id', async (req, res) => {
  */
 router.get('/status', async (req, res) => {
   try {
-    const tenantId = req.query.tenant_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const organizationId = req.query.organization_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
     
-    const status = await CRMSyncService.getSyncStatus(tenantId);
+    const status = await CRMSyncService.getSyncStatus(organizationId);
     
     res.json({
       success: true,
@@ -130,10 +130,10 @@ router.get('/status', async (req, res) => {
  */
 router.get('/history', async (req, res) => {
   try {
-    const tenantId = req.query.tenant_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const organizationId = req.query.organization_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
     const limit = parseInt(req.query.limit) || 10;
     
-    const history = await CRMSyncService.getSyncHistory(tenantId, limit);
+    const history = await CRMSyncService.getSyncHistory(organizationId, limit);
     
     res.json({
       success: true,
@@ -156,12 +156,12 @@ router.get('/history', async (req, res) => {
  */
 router.post('/execute', async (req, res) => {
   try {
-    const tenantId = req.body.tenant_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
+    const organizationId = req.body.organization_id || '7c563f31-36bd-4414-ad44-ef9c19c1c6b1';
     const syncType = req.body.sync_type || 'full';
     
-    console.log(`🚀 Executing ${syncType} sync immediately for tenant ${tenantId}`);
+    console.log(`🚀 Executing ${syncType} sync immediately for tenant ${organizationId}`);
     
-    const syncService = new CRMSyncService(tenantId);
+    const syncService = new CRMSyncService(organizationId);
     
     let result;
     if (syncType === 'incremental') {

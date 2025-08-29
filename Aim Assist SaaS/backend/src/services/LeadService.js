@@ -13,10 +13,10 @@ class LeadService {
   /**
    * Sync leads from CRM to local database
    */
-  static async syncFromCRM(tenantId) {
+  static async syncFromCRM(organizationId) {
     try {
       // Get CRM adapter for tenant
-      const adapter = await CRMFactory.getAdapter(tenantId);
+      const adapter = await CRMFactory.getAdapter(organizationId);
       const crmType = adapter.crmType || 'fub';
       const translator = new TranslationService(crmType);
       
@@ -28,11 +28,11 @@ class LeadService {
       
       // Upsert each lead to local database
       for (const crmLead of crmLeads) {
-        const existing = await this.getByPhone(tenantId, crmLead.phone);
+        const existing = await this.getByPhone(organizationId, crmLead.phone);
         
         // Use translator to convert CRM data to Supabase format
         const leadData = translator.toSupabase(crmLead);
-        leadData.organization_id = tenantId;
+        leadData.organization_id = organizationId;
         leadData.last_synced_at = new Date();
         
         if (existing) {
@@ -85,12 +85,12 @@ class LeadService {
   /**
    * Get lead by ID
    */
-  static async getById(tenantId, leadId) {
+  static async getById(organizationId, leadId) {
     try {
       if (!supabase) {
         return {
           id: leadId,
-          organization_id: tenantId,
+          organization_id: organizationId,
           first_name: 'Test',
           last_name: 'Lead',
           phone: '+17068184445',
@@ -98,7 +98,7 @@ class LeadService {
         };
       }
       
-      const { data, error } = await withTenantContext(tenantId, async (db) => {
+      const { data, error } = await withTenantContext(organizationId, async (db) => {
         return db
           .from('leads')
           .select('*')
@@ -117,7 +117,7 @@ class LeadService {
   /**
    * Get lead by phone number
    */
-  static async getByPhone(tenantId, phoneNumber) {
+  static async getByPhone(organizationId, phoneNumber) {
     try {
       if (!phoneNumber) return null;
       
@@ -129,7 +129,7 @@ class LeadService {
         return null;
       }
       
-      const { data, error } = await withTenantContext(tenantId, async (db) => {
+      const { data, error } = await withTenantContext(organizationId, async (db) => {
         return db
           .from('leads')
           .select('*')
@@ -173,13 +173,13 @@ class LeadService {
   /**
    * Get all leads for tenant
    */
-  static async getAll(tenantId, filters = {}) {
+  static async getAll(organizationId, filters = {}) {
     try {
       if (!supabase) {
         return [
           {
             id: 'lead-1',
-            organization_id: tenantId,
+            organization_id: organizationId,
             first_name: 'John',
             last_name: 'Doe',
             phone: '+17068184445',
@@ -189,7 +189,7 @@ class LeadService {
           },
           {
             id: 'lead-2',
-            organization_id: tenantId,
+            organization_id: organizationId,
             first_name: 'Jane',
             last_name: 'Smith',
             phone: '+19045551234',
@@ -203,7 +203,7 @@ class LeadService {
       let query = supabase
         .from('leads')
         .select('*')
-        .eq('organization_id', tenantId);
+        .eq('organization_id', organizationId);
       
       // Apply filters
       if (filters.ai_status) {
@@ -252,9 +252,9 @@ class LeadService {
   /**
    * Check if AI should respond to lead
    */
-  static async shouldAIRespond(tenantId, leadId) {
+  static async shouldAIRespond(organizationId, leadId) {
     try {
-      const lead = await this.getById(tenantId, leadId);
+      const lead = await this.getById(organizationId, leadId);
       
       if (!lead) return false;
       
@@ -284,7 +284,7 @@ class LeadService {
   /**
    * Get leads eligible for auto-text
    */
-  static async getEligibleForAutoText(tenantId, source, hoursAgo = 24) {
+  static async getEligibleForAutoText(organizationId, source, hoursAgo = 24) {
     try {
       const cutoffTime = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
       
@@ -292,7 +292,7 @@ class LeadService {
         return [];
       }
       
-      const { data, error } = await withTenantContext(tenantId, async (db) => {
+      const { data, error } = await withTenantContext(organizationId, async (db) => {
         return db
           .from('leads')
           .select('*')
@@ -355,7 +355,7 @@ class LeadService {
   /**
    * Get conversation statistics
    */
-  static async getStats(tenantId) {
+  static async getStats(organizationId) {
     try {
       if (!supabase) {
         return {
@@ -368,7 +368,7 @@ class LeadService {
         };
       }
       
-      const leads = await this.getAll(tenantId);
+      const leads = await this.getAll(organizationId);
       
       const stats = {
         total: leads.length,

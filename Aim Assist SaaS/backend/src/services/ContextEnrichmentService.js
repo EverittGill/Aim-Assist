@@ -7,8 +7,10 @@
 const CRMFactory = require('./crm/CRMFactory');
 
 class ContextEnrichmentService {
-  constructor(tenantId, config = {}) {
-    this.tenantId = tenantId;
+  constructor(organizationId, config = {}) {
+    // Compatibility layer during migration
+    this.organizationId = organizationId;
+    this.organizationId = organizationId; // Keep for backward compatibility
     this.cacheTimeout = config.cacheTimeout || 300000; // 5 minutes
     this.contextCache = new Map();
     this.maxActivities = config.maxActivities || 50;
@@ -23,7 +25,7 @@ class ContextEnrichmentService {
       console.log(`🔍 Enriching context for lead ${leadId}`);
       
       // Check cache first
-      const cacheKey = `${this.tenantId}-${leadId}`;
+      const cacheKey = `${this.organizationId}-${leadId}`;
       const cached = this.contextCache.get(cacheKey);
       
       if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
@@ -32,7 +34,7 @@ class ContextEnrichmentService {
       }
       
       // Get CRM adapter
-      const adapter = await CRMFactory.getAdapter(this.tenantId);
+      const adapter = await CRMFactory.getAdapter(this.organizationId);
       
       // Fetch all context data in parallel
       const [
@@ -54,7 +56,7 @@ class ContextEnrichmentService {
       // Build enriched context
       const enrichedContext = {
         leadId,
-        tenantId: this.tenantId,
+        organizationId: this.organizationId,
         
         // Basic lead information
         profile: {
@@ -136,7 +138,7 @@ class ContextEnrichmentService {
       // Return minimal context on error
       return {
         leadId,
-        tenantId: this.tenantId,
+        organizationId: this.organizationId,
         profile: { id: leadId },
         error: error.message,
         enrichmentMetadata: {

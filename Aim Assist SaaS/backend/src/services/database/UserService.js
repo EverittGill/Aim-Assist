@@ -17,9 +17,9 @@ class UserService {
    * Find user by email within a tenant context
    * This is the primary method for login
    */
-  async findUserByEmail(email, tenantId = null) {
+  async findUserByEmail(email, organizationId = null) {
     try {
-      console.log(`🔍 Looking up user: ${email}${tenantId ? ` in tenant ${tenantId}` : ''}`);
+      console.log(`🔍 Looking up user: ${email}${organizationId ? ` in tenant ${organizationId}` : ''}`);
       
       let query = this.supabase
         .from('users')
@@ -38,9 +38,9 @@ class UserService {
         .eq('email', email.toLowerCase())
         .eq('is_active', true);
 
-      // If tenantId provided, filter by it
-      if (tenantId) {
-        query = query.eq('organization_id', tenantId);
+      // If organizationId provided, filter by it
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
       }
 
       const { data, error } = await query.single();
@@ -166,7 +166,7 @@ class UserService {
         role: user.role,
         first_name: user.first_name,
         last_name: user.last_name,
-        tenant_id: user.tenant_id,
+        organization_id: user.organization_id,
         tenant: user.tenant,
         permissions: user.permissions || [],
         settings: user.settings || {}
@@ -261,7 +261,7 @@ class UserService {
     try {
       // Don't allow updating certain fields
       delete updates.id;
-      delete updates.tenant_id;
+      delete updates.organization_id;
       delete updates.created_at;
       
       // Hash password if being updated
@@ -294,12 +294,12 @@ class UserService {
   /**
    * Get all users for a tenant
    */
-  async getUsersByTenant(tenantId) {
+  async getUsersByTenant(organizationId) {
     try {
       const { data, error } = await this.supabase
         .from('users')
         .select('*')
-        .eq('organization_id', tenantId)
+        .eq('organization_id', organizationId)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 

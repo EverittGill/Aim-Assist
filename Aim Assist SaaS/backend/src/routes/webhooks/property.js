@@ -28,7 +28,7 @@ router.post('/viewing', async (req, res) => {
     console.log('🏠 Property viewing webhook received:', req.body);
     
     const {
-      tenantId,
+      organizationId,
       leadId,
       leadPhone,
       propertyId,
@@ -41,8 +41,8 @@ router.post('/viewing', async (req, res) => {
     } = req.body;
     
     // Validate required fields
-    if (!tenantId) {
-      return res.status(400).json({ error: 'tenantId required' });
+    if (!organizationId) {
+      return res.status(400).json({ error: 'organizationId required' });
     }
     
     if (!leadId && !leadPhone) {
@@ -58,7 +58,7 @@ router.post('/viewing', async (req, res) => {
     
     // Process asynchronously
     processPropertyViewing({
-      tenantId,
+      organizationId,
       leadId,
       leadPhone,
       propertyId,
@@ -82,14 +82,14 @@ router.post('/viewing', async (req, res) => {
  * Process property viewing asynchronously
  */
 async function processPropertyViewing(data) {
-  const { tenantId, leadId, leadPhone, ...viewingData } = data;
+  const { organizationId, leadId, leadPhone, ...viewingData } = data;
   
   try {
     let finalLeadId = leadId;
     
     // If no leadId, find by phone
     if (!finalLeadId && leadPhone) {
-      const phoneService = new PhoneMatchingService(tenantId);
+      const phoneService = new PhoneMatchingService(organizationId);
       const result = await phoneService.findOrCreateLeadByPhone(leadPhone);
       
       if (result && result.lead) {
@@ -104,7 +104,7 @@ async function processPropertyViewing(data) {
     }
     
     // Process with nurturing service
-    const nurturingService = new NurturingService(tenantId);
+    const nurturingService = new NurturingService(organizationId);
     await nurturingService.handlePropertyViewing(finalLeadId, viewingData);
     
   } catch (error) {
@@ -117,9 +117,9 @@ async function processPropertyViewing(data) {
  */
 router.post('/viewing/batch', async (req, res) => {
   try {
-    const { tenantId, events } = req.body;
+    const { organizationId, events } = req.body;
     
-    if (!tenantId || !Array.isArray(events)) {
+    if (!organizationId || !Array.isArray(events)) {
       return res.status(400).json({ error: 'Invalid request' });
     }
     
@@ -134,7 +134,7 @@ router.post('/viewing/batch', async (req, res) => {
     for (const event of events) {
       await processPropertyViewing({
         ...event,
-        tenantId
+        organizationId
       }).catch(error => {
         console.error('Error processing batch event:', error);
       });

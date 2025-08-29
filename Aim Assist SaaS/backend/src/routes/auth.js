@@ -23,7 +23,7 @@ module.exports = (authService) => {
       const user = await authService.authenticateUser(email, password);
       const token = authService.generateToken(
         user.userId, 
-        user.tenantId, 
+        user.organizationId, 
         user.email, 
         user.role
       );
@@ -36,10 +36,10 @@ module.exports = (authService) => {
           id: user.userId,
           email: user.email,
           role: user.role,
-          tenant_id: user.tenantId
+          organization_id: user.organizationId
         },
         tenant: {
-          id: user.tenantId,
+          id: user.organizationId,
           name: user.tenantName,
           settings: {
             agency_name: user.tenantConfig?.agency_name || 'Your Agency'
@@ -69,7 +69,7 @@ module.exports = (authService) => {
       const decoded = authService.verifyToken(token);
       
       // Get tenant config for the user
-      const tenantConfig = await authService.getTenantConfig(decoded.tenantId);
+      const tenantConfig = await authService.getTenantConfig(decoded.organizationId);
       
       res.json({ 
         success: true,
@@ -77,10 +77,10 @@ module.exports = (authService) => {
           id: decoded.userId,
           email: decoded.email,
           role: decoded.role,
-          tenant_id: decoded.tenantId
+          organization_id: decoded.organizationId
         },
         tenant: {
-          id: decoded.tenantId,
+          id: decoded.organizationId,
           name: tenantConfig.name,
           settings: {
             agency_name: tenantConfig.agency_name
@@ -127,17 +127,17 @@ module.exports = (authService) => {
 
     try {
       const decoded = authService.verifyToken(token);
-      const tenantConfig = await authService.getTenantConfig(decoded.tenantId);
+      const tenantConfig = await authService.getTenantConfig(decoded.organizationId);
       
       res.json({
         user: {
           id: decoded.userId,
           email: decoded.email,
           role: decoded.role,
-          tenant_id: decoded.tenantId
+          organization_id: decoded.organizationId
         },
         tenant: {
-          id: decoded.tenantId,
+          id: decoded.organizationId,
           name: tenantConfig.name,
           settings: {
             agency_name: tenantConfig.agency_name

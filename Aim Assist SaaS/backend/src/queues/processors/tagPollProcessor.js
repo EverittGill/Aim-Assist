@@ -7,7 +7,8 @@ const TagPollingService = require('../../services/TagPollingService');
 
 module.exports = async function processTagPoll(job) {
   const { 
-    tenantId, 
+    organizationId, 
+    organizationId, // Accept both during migration
     tagName = 'AIM_ASSIST',
     processImmediately = true,
     enableAI = true,
@@ -15,10 +16,13 @@ module.exports = async function processTagPoll(job) {
     sinceMinutesAgo = 60
   } = job.data;
   
-  console.log(`🏷️  Processing tag poll job ${job.id} for tag "${tagName}" (tenant: ${tenantId})`);
+  // Use organizationId if provided, fallback to organizationId
+  const orgId = organizationId || organizationId;
+  
+  console.log(`🏷️  Processing tag poll job ${job.id} for tag "${tagName}" (tenant: ${orgId})`);
   
   try {
-    const pollService = new TagPollingService(tenantId);
+    const pollService = new TagPollingService(orgId);
     
     const result = await pollService.pollForTag(tagName, {
       processImmediately,

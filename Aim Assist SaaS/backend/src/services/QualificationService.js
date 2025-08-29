@@ -6,8 +6,10 @@
 const { supabase } = require('../config/supabase');
 
 class QualificationService {
-  constructor(tenantId) {
-    this.tenantId = tenantId;
+  constructor(organizationId) {
+    // Compatibility layer during migration
+    this.organizationId = organizationId;
+    this.organizationId = organizationId; // Keep for backward compatibility
     
     // Key qualification fields to track
     this.qualificationFields = {
@@ -298,7 +300,7 @@ class QualificationService {
       const { data, error } = await supabase
         .from('lead_qualifications')
         .upsert({
-          organization_id: this.tenantId,
+          organization_id: this.organizationId,
           lead_id: leadId,
           timeline: qualification.timeline,
           budget: qualification.budget,
@@ -311,7 +313,7 @@ class QualificationService {
           qualified_at: qualification.isQualified ? new Date().toISOString() : null,
           updated_at: new Date().toISOString()
         }, {
-          onConflict: 'tenant_id,lead_id'
+          onConflict: 'organization_id,lead_id'
         });
 
       if (error) {
@@ -335,7 +337,7 @@ class QualificationService {
       const { data, error } = await supabase
         .from('lead_qualifications')
         .select('*')
-        .eq('organization_id', this.tenantId)
+        .eq('organization_id', this.organizationId)
         .eq('lead_id', leadId)
         .single();
 

@@ -9,9 +9,11 @@ const ClaudeService = require('./ai/ClaudeService');
 const queueManager = require('../queues/QueueManager').default;
 
 class NurturingService {
-  constructor(tenantId) {
-    this.tenantId = tenantId;
-    this.claudeService = new ClaudeService(tenantId);
+  constructor(organizationId) {
+    // Compatibility layer during migration
+    this.organizationId = organizationId;
+    this.organizationId = organizationId; // Keep for backward compatibility
+    this.claudeService = new ClaudeService(organizationId);
   }
   
   /**
@@ -25,7 +27,7 @@ class NurturingService {
       const { data: lead } = await supabase
         .from('leads')
         .select('*')
-        .eq('organization_id', this.tenantId)
+        .eq('organization_id', this.organizationId)
         .eq('crm_lead_id', leadId)
         .single();
       
@@ -171,7 +173,7 @@ class NurturingService {
       
       // Queue SMS
       await queueManager.queueSMS({
-        tenantId: this.tenantId,
+        organizationId: this.organizationId,
         leadId: lead.crm_lead_id,
         to: lead.phone,
         message,
@@ -184,7 +186,7 @@ class NurturingService {
       });
       
       // Log to CRM
-      const adapter = await CRMFactory.getAdapter(this.tenantId);
+      const adapter = await CRMFactory.getAdapter(this.organizationId);
       await adapter.logMessage(lead.crm_lead_id, {
         direction: 'outbound',
         content: message,
@@ -206,14 +208,14 @@ class NurturingService {
    * Run periodic nurturing campaigns
    */
   async runPeriodicNurturing() {
-    console.log(`🔄 Running periodic nurturing for tenant ${this.tenantId}`);
+    console.log(`🔄 Running periodic nurturing for tenant ${this.organizationId}`);
     
     try {
       // Get leads eligible for nurturing
       const { data: leads } = await supabase
         .from('leads')
         .select('*')
-        .eq('organization_id', this.tenantId)
+        .eq('organization_id', this.organizationId)
         .eq('ai_status', 'active')
         .eq('status', 'active')
         .not('phone', 'is', null);
@@ -272,7 +274,7 @@ class NurturingService {
       if (message && campaignType) {
         // Queue the message
         await queueManager.queueSMS({
-          tenantId: this.tenantId,
+          organizationId: this.organizationId,
           leadId: lead.crm_lead_id,
           to: lead.phone,
           message,
@@ -312,7 +314,7 @@ class NurturingService {
       const message = `Hi ${lead.first_name}! I'm the AI assistant at ${process.env.USER_AGENCY_NAME || 'our agency'}. I saw you were interested in real estate. What kind of property are you looking for?`;
       
       await queueManager.queueSMS({
-        tenantId: this.tenantId,
+        organizationId: this.organizationId,
         leadId: lead.crm_lead_id,
         to: lead.phone,
         message,
@@ -350,7 +352,7 @@ class NurturingService {
       await supabase
         .from('campaign_metrics')
         .insert({
-          organization_id: this.tenantId,
+          organization_id: this.organizationId,
           campaign_type: campaignType,
           action,
           timestamp: new Date()

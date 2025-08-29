@@ -8,8 +8,8 @@
 const twilio = require('twilio');
 
 class TwilioService {
-  constructor(tenantId = null) {
-    this.tenantId = tenantId;
+  constructor(organizationId = null) {
+    this.organizationId = organizationId;
     
     // Check if Twilio is configured (use DEMO variables if main ones not set)
     const accountSid = process.env.TWILIO_ACCOUNT_SID || process.env.DEMO_TWILIO_ACCOUNT_SID;
@@ -64,11 +64,11 @@ class TwilioService {
   /**
    * Purchase phone number for tenant
    */
-  async purchasePhoneNumber(tenantId, areaCode = null) {
+  async purchasePhoneNumber(organizationId, areaCode = null) {
     try {
       if (!this.isConfigured) {
         const mockNumber = '+1555' + Math.floor(Math.random() * 10000000).toString().padStart(7, '0');
-        console.log(`Mock: Purchased phone number ${mockNumber} for tenant ${tenantId}`);
+        console.log(`Mock: Purchased phone number ${mockNumber} for tenant ${organizationId}`);
         return {
           phoneNumber: mockNumber,
           sid: 'PN_mock_' + Date.now(),
@@ -96,7 +96,7 @@ class TwilioService {
       // Purchase the first available number
       const incoming = await this.client.incomingPhoneNumbers.create({
         phoneNumber: availableNumbers[0].phoneNumber,
-        smsUrl: `${process.env.WEBHOOK_BASE_URL}/webhook/twilio?tenant=${tenantId}`,
+        smsUrl: `${process.env.WEBHOOK_BASE_URL}/webhook/twilio?tenant=${organizationId}`,
         smsMethod: 'POST'
       });
       
@@ -110,15 +110,15 @@ class TwilioService {
   /**
    * Get tenant's primary phone number
    */
-  async getTenantPhoneNumber(tenantId) {
-    // Use TenantPhoneService to get the correct phone for this tenant
-    const TenantPhoneService = require('../TenantPhoneService');
+  async getTenantPhoneNumber(organizationId) {
+    // Use OrganizationPhoneService to get the correct phone for this tenant
+    const OrganizationPhoneService = require('../OrganizationPhoneService');
     
     try {
       // Try to get tenant's primary phone from database
-      const primaryPhone = await TenantPhoneService.getTenantPrimaryPhone(tenantId);
+      const primaryPhone = await OrganizationPhoneService.getTenantPrimaryPhone(organizationId);
       if (primaryPhone) {
-        console.log(`📱 Using tenant ${tenantId}'s primary phone: ${primaryPhone}`);
+        console.log(`📱 Using tenant ${organizationId}'s primary phone: ${primaryPhone}`);
         return primaryPhone;
       }
     } catch (error) {
@@ -127,16 +127,16 @@ class TwilioService {
     
     // Fallback for testing/development when database not available
     if (!this.isConfigured) {
-      return this.mockPhoneNumbers[tenantId] || this.mockPhoneNumbers.default;
+      return this.mockPhoneNumbers[organizationId] || this.mockPhoneNumbers.default;
     }
     
     // Last resort: use environment variable (for single-tenant testing only)
     const fromNumber = process.env.DEMO_TWILIO_FROM_NUMBER || process.env.TWILIO_FROM_NUMBER;
     if (!fromNumber) {
-      throw new Error(`No phone number configured for tenant ${tenantId}`);
+      throw new Error(`No phone number configured for tenant ${organizationId}`);
     }
     
-    console.warn(`⚠️ Using fallback env phone for tenant ${tenantId}: ${fromNumber}`);
+    console.warn(`⚠️ Using fallback env phone for tenant ${organizationId}: ${fromNumber}`);
     return fromNumber;
   }
 
@@ -155,7 +155,7 @@ class TwilioService {
       }
       
       // Get sender number
-      const fromNumber = from || await this.getTenantPhoneNumber(this.tenantId);
+      const fromNumber = from || await this.getTenantPhoneNumber(this.organizationId);
       
       // Validate message length
       if (message.length > 1600) {
@@ -322,11 +322,11 @@ class TwilioService {
   /**
    * Get phone numbers for tenant
    */
-  async getPhoneNumbers(tenantId) {
+  async getPhoneNumbers(organizationId) {
     try {
       if (!this.isConfigured) {
         return [{
-          phoneNumber: this.mockPhoneNumbers[tenantId] || '+15551234567',
+          phoneNumber: this.mockPhoneNumbers[organizationId] || '+15551234567',
           friendlyName: 'Test Number',
           capabilities: { sms: true, voice: false, mms: false },
           mock: true

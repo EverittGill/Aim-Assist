@@ -9,18 +9,20 @@ const ClaudeProvider = require('./providers/ClaudeProvider');
 const GeminiProvider = require('./providers/GeminiProvider');
 const OpenAIProvider = require('./providers/OpenAIProvider');
 const PromptEngine = require('./PromptEngine');
-const TenantService = require('../TenantService');
+const OrganizationService = require('../OrganizationService');
 
 class AIService {
-  constructor(tenantId = null) {
-    this.tenantId = tenantId;
+  constructor(organizationId = null) {
+    // Compatibility layer during migration
+    this.organizationId = organizationId;
+    this.organizationId = organizationId; // Keep for backward compatibility
     this.providers = {
       claude: ClaudeProvider,
       gemini: GeminiProvider,
       openai: OpenAIProvider,
       gpt4: OpenAIProvider // Alias for OpenAI
     };
-    this.promptEngine = new PromptEngine(tenantId);
+    this.promptEngine = new PromptEngine(organizationId);
     this.settings = null;
   }
 
@@ -28,8 +30,8 @@ class AIService {
    * Initialize AI service with tenant settings
    */
   async initialize() {
-    if (this.tenantId) {
-      const tenant = await TenantService.getById(this.tenantId);
+    if (this.organizationId) {
+      const tenant = await OrganizationService.getById(this.organizationId);
       this.settings = tenant?.settings || {};
     } else {
       // Default settings for testing
@@ -125,28 +127,62 @@ class AIService {
         templateId 
       } = context;
       
+      // Get previous extraction data to avoid repeating questions
+      let extractedData = null;
+      try {
+        const { supabase } = require('../config/supabase');
+        if (supabase && lead.id) {
+          const { data: lastExtraction } = await supabase
+            .from('extraction_logs')
+            .select('extracted_data')
+            .eq('lead_id', lead.id)
+            .eq('organization_id', this.organizationId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (lastExtraction?.extracted_data) {
+            extractedData = lastExtraction.extracted_data;
+            console.log(`📊 Using extraction data for lead ${lead.id}`);
+          }
+        }
+      } catch (error) {
+        console.log('Could not fetch extraction data:', error.message);
+      }
+      
       // Get prompt template
       const promptTemplate = await this.promptEngine.getPrompt(templateId || 'conversation_reply');
       
-      // Build context
+      // Build context with extraction data
       const promptContext = {
         leadName: lead.first_name || 'there',
         agencyName: this.settings.agency_name || 'our team',
         conversationHistory: this.formatHistory(conversationHistory),
         currentMessage,
-        messageCount: conversationHistory.length
+        messageCount: conversationHistory.length,
+        // Add extracted facts to avoid repeating questions
+        knownFacts: extractedData ? {
+          budget: extractedData.budget?.value,
+          timeline: extractedData.timeline?.value,
+          hasAgent: extractedData.agentStatus?.hasAgent,
+          financing: extractedData.financing?.status,
+          motivation: extractedData.motivation?.reason
+        } : null
       };
       
       // Substitute variables
       const prompt = this.promptEngine.substituteVariables(promptTemplate, promptContext);
       
-      // System prompt with constraints
-      const systemPrompt = `You are a helpful real estate assistant continuing a conversation. 
+      // System prompt with constraints and known facts
+      const knownFactsPrompt = promptContext.knownFacts ? 
+        `\nYou already know: Budget: ${promptContext.knownFacts.budget || 'unknown'}, Timeline: ${promptContext.knownFacts.timeline || 'unknown'}, Has agent: ${promptContext.knownFacts.hasAgent || 'unknown'}` : '';
+      
+      const systemPrompt = `You are a helpful real estate assistant continuing a conversation. ${knownFactsPrompt}
       Rules:
       1. Keep responses under 160 characters
       2. Be natural and conversational
       3. Focus on the lead's question
-      4. Don't repeat information already shared
+      4. Don't repeat questions about information you already know
       5. If they want to schedule or talk to someone, acknowledge it positively`;
       
       // Get provider and generate
