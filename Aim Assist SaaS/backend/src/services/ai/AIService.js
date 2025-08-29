@@ -13,9 +13,7 @@ const OrganizationService = require('../OrganizationService');
 
 class AIService {
   constructor(organizationId = null) {
-    // Compatibility layer during migration
     this.organizationId = organizationId;
-    this.organizationId = organizationId; // Keep for backward compatibility
     this.providers = {
       claude: ClaudeProvider,
       gemini: GeminiProvider,
@@ -131,7 +129,7 @@ class AIService {
       let extractedData = null;
       try {
         const { supabase } = require('../config/supabase');
-        if (supabase && lead.id) {
+        if (supabase && lead && lead.id) {
           const { data: lastExtraction } = await supabase
             .from('extraction_logs')
             .select('extracted_data')

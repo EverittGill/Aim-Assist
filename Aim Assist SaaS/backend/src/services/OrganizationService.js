@@ -67,10 +67,9 @@ class OrganizationService {
         }
       };
 
-      // Insert tenant (will work even without Supabase for testing)
+      // Require Supabase for organization creation
       if (!supabase) {
-        console.log('Mock tenant created:', tenantData);
-        return { ...tenantData, id: 'mock-tenant-' + Date.now() };
+        throw new Error('Database connection required for organization creation');
       }
 
       const { data: tenant, error } = await supabase
@@ -94,13 +93,7 @@ class OrganizationService {
   static async getById(organizationId) {
     try {
       if (!supabase) {
-        return {
-          id: organizationId,
-          name: 'Mock Tenant',
-          subdomain: 'mock',
-          subscription_status: 'trial',
-          subscription_plan: 'starter'
-        };
+        throw new Error('Database connection required to fetch organization');
       }
 
       const { data: tenant, error } = await supabase
@@ -123,13 +116,7 @@ class OrganizationService {
   static async getBySubdomain(subdomain) {
     try {
       if (!supabase) {
-        return {
-          id: 'mock-tenant-id',
-          name: 'Mock Tenant',
-          subdomain: subdomain,
-          subscription_status: 'trial',
-          subscription_plan: 'starter'
-        };
+        throw new Error('Database connection required to fetch organization by subdomain');
       }
 
       const { data: tenant, error } = await supabase
@@ -152,8 +139,7 @@ class OrganizationService {
   static async updateSettings(organizationId, settings) {
     try {
       if (!supabase) {
-        console.log('Mock settings update:', settings);
-        return { id: organizationId, settings };
+        throw new Error('Database connection required to update settings');
       }
 
       // Merge with existing settings
@@ -191,6 +177,8 @@ class OrganizationService {
   static async checkUsageLimit(organizationId, metricType) {
     try {
       if (!supabase) {
+        // Return safe defaults for usage checking when DB unavailable
+        console.warn('Database unavailable - returning default usage limits');
         return {
           current_usage: 0,
           plan_limit: 1000,
@@ -225,8 +213,8 @@ class OrganizationService {
   static async recordUsage(organizationId, metricType, quantity = 1, metadata = {}) {
     try {
       if (!supabase) {
-        console.log('Mock usage recorded:', { organizationId, metricType, quantity });
-        return { success: true };
+        console.warn('Database unavailable - usage not recorded');
+        return { success: false, reason: 'database_unavailable' };
       }
 
       const currentDate = new Date();
@@ -263,12 +251,7 @@ class OrganizationService {
   static async getAll(filters = {}) {
     try {
       if (!supabase) {
-        return [{
-          id: 'mock-tenant-1',
-          name: 'Mock Tenant 1',
-          subdomain: 'mock1',
-          subscription_status: 'trial'
-        }];
+        throw new Error('Database connection required to list organizations');
       }
 
       let query = supabase
@@ -300,8 +283,7 @@ class OrganizationService {
   static async upgradeSubscription(organizationId, plan) {
     try {
       if (!supabase) {
-        console.log('Mock subscription upgrade:', { organizationId, plan });
-        return { success: true, plan };
+        throw new Error('Database connection required to upgrade subscription');
       }
 
       const { data: tenant, error } = await supabase
@@ -332,8 +314,7 @@ class OrganizationService {
   static async cancelSubscription(organizationId, reason) {
     try {
       if (!supabase) {
-        console.log('Mock subscription cancelled:', { organizationId, reason });
-        return { success: true };
+        throw new Error('Database connection required to cancel subscription');
       }
 
       const { data: tenant, error } = await supabase
@@ -399,8 +380,7 @@ class OrganizationService {
       };
 
       if (!supabase) {
-        console.log('Mock brokerage created:', tenantData);
-        return { ...tenantData, id: 'mock-brokerage-' + Date.now() };
+        throw new Error('Database connection required to create brokerage');
       }
 
       const { data: tenant, error } = await supabase
@@ -462,8 +442,7 @@ class OrganizationService {
       };
 
       if (!supabase) {
-        console.log('Mock agent created:', agentData);
-        return { ...agentData, id: 'mock-agent-' + Date.now() };
+        throw new Error('Database connection required to create agent');
       }
 
       const { data: agent, error } = await supabase

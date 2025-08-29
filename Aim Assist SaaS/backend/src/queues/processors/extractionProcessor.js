@@ -185,11 +185,8 @@ async function processExtractionJob(job) {
 async function logExtraction(data) {
   try {
     if (!supabase) {
-      console.log('📝 Mock extraction log:', {
-        lead_id: data.leadId,
-        status: data.status || 'completed',
-        confidence: data.extraction?.overallConfidence
-      });
+      console.error('Cannot log extraction - database connection required');
+      // Continue processing but note the failure
       return;
     }
     
@@ -224,7 +221,7 @@ async function logExtraction(data) {
 async function queueManualReview(data) {
   try {
     if (!supabase) {
-      console.log('📋 Mock manual review queued:', data.leadId);
+      console.error('Cannot queue manual review - database connection required');
       return;
     }
     
@@ -243,8 +240,22 @@ async function queueManualReview(data) {
       console.error('Failed to queue manual review:', error);
     }
     
-    // TODO: Send notification to admin
-    console.log(`📋 Lead ${data.leadId} queued for manual review`);
+    // Send notification to admin about manual review needed
+    try {
+      const NotificationService = require('../../services/NotificationService');
+      const notificationService = new NotificationService(data.organizationId);
+      
+      await notificationService.notifyAgentOfEngagedLead(
+        data.leadId,
+        `Manual review needed: ${data.reason}`,
+        { name: `Lead ${data.leadId}`, confidence: Math.round((data.extraction?.overallConfidence || 0) * 100) }
+      );
+      
+      console.log(`📋 Lead ${data.leadId} queued for manual review and admin notified`);
+    } catch (notifyError) {
+      console.error('Failed to send admin notification:', notifyError.message);
+      console.log(`📋 Lead ${data.leadId} queued for manual review (notification failed)`);
+    }
     
   } catch (error) {
     console.error('Error queuing manual review:', error);
@@ -279,8 +290,28 @@ async function handleEscalation(data) {
       }
     });
     
-    // TODO: Send notification to assigned agent
-    console.log(`🚨 Escalation handled for lead ${data.leadId}: ${data.reason}`);
+    // Send notification to assigned agent about escalation
+    try {
+      const NotificationService = require('../../services/NotificationService');
+      const notificationService = new NotificationService(data.organizationId);
+      
+      // Get lead info from CRM for better context
+      const leadInfo = {
+        id: data.leadId,
+        name: `Lead ${data.leadId}` // Will be replaced with actual name from CRM if available
+      };
+      
+      await notificationService.notifyAgentOfEscalation(
+        data.leadId,
+        data.reason,
+        leadInfo
+      );
+      
+      console.log(`🚨 Escalation handled for lead ${data.leadId}: ${data.reason} - Agent notified`);
+    } catch (notifyError) {
+      console.error('Failed to send escalation notification:', notifyError.message);
+      console.log(`🚨 Escalation handled for lead ${data.leadId}: ${data.reason} (notification failed)`);
+    }
     
   } catch (error) {
     console.error('Error handling escalation:', error);

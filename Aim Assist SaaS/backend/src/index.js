@@ -5,6 +5,11 @@
  */
 
 require('dotenv').config();
+
+// Validate environment variables before starting
+const { validateEnvironment, getConfigSummary } = require('./config/validateEnv');
+validateEnvironment();
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -103,6 +108,14 @@ const server = app.listen(PORT, () => {
   console.log(`🎯 Aim Assist API running on port ${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/health`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Log configuration summary
+  const config = getConfigSummary();
+  console.log(`🔧 Configuration:`);
+  console.log(`   Database: ${config.database}`);
+  console.log(`   AI Provider: ${config.ai.provider}`);
+  console.log(`   SMS: ${config.sms.configured ? 'Configured' : 'Not configured'}`);
+  console.log(`   Monitoring: ${config.monitoring.sentry ? 'Sentry enabled' : 'No monitoring'}`);
   
   // Initialize services (to be implemented)
   initializeServices().catch(console.error);

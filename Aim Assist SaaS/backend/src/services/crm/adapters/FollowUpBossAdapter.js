@@ -95,6 +95,12 @@ class FollowUpBossAdapter extends CRMAdapter {
         params
       });
       
+      // Safely access response data
+      if (!response || !response.data) {
+        console.error('Invalid response from FUB API');
+        return { leads: [], total: 0, hasMore: false, nextOffset: offset };
+      }
+      
       const leads = response.data.people || [];
       const metadata = response.data._metadata || {};
       
@@ -143,6 +149,10 @@ class FollowUpBossAdapter extends CRMAdapter {
         headers: this.getHeaders()
       });
       
+      // Safely handle response
+      if (!response || !response.data) {
+        throw new Error('Invalid response from FUB API - no data received');
+      }
       return this.mapFUBToStandard(response.data);
     } catch (error) {
       console.error('Error creating FUB lead:', error.message);
@@ -161,6 +171,10 @@ class FollowUpBossAdapter extends CRMAdapter {
         headers: this.getHeaders()
       });
       
+      // Safely handle response
+      if (!response || !response.data) {
+        throw new Error('Invalid response from FUB API - no data received');
+      }
       return this.mapFUBToStandard(response.data);
     } catch (error) {
       console.error('Error updating FUB lead:', error.message);

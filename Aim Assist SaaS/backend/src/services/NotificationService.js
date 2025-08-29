@@ -17,6 +17,16 @@ class NotificationService {
    */
   async notifyAgentOfQualifiedLead(leadId, extraction, leadInfo) {
     try {
+      // Validate inputs
+      if (!leadId) {
+        console.warn('Cannot notify - no lead ID provided');
+        return false;
+      }
+      
+      if (!leadInfo) {
+        leadInfo = { id: leadId, name: 'Unknown Lead' };
+      }
+      
       // Build notification message
       const message = this.buildQualifiedLeadMessage(leadInfo, extraction);
       

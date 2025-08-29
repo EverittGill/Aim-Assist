@@ -24,29 +24,24 @@ async function authenticate(req, res, next) {
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // For development - accept test token
-    if (process.env.NODE_ENV === 'development' && token === 'test-token') {
+    // For development - accept test token only if explicitly enabled
+    if (process.env.NODE_ENV === 'development' && process.env.ALLOW_TEST_AUTH === 'true' && token === 'test-token') {
       req.user = {
-        id: 'test-user-id',
-        organization_id: 'test-organization-id',
-        email: 'test@example.com',
+        id: process.env.TEST_USER_ID || 'dev-user',
+        organization_id: process.env.TEST_ORG_ID || 'dev-org',
+        email: process.env.TEST_EMAIL || 'dev@test.local',
         role: 'admin'
       };
-      req.organizationId = 'test-organization-id';
+      req.organizationId = req.user.organization_id;
       return next();
     }
 
     // Verify token with Supabase
     if (!supabase) {
-      console.warn('Supabase not configured - using mock auth');
-      req.user = {
-        id: 'mock-user-id',
-        organization_id: 'mock-organization-id',
-        email: 'mock@example.com',
-        role: 'admin'
-      };
-      req.organizationId = 'mock-organization-id';
-      return next();
+      return res.status(503).json({
+        error: 'Service temporarily unavailable',
+        message: 'Authentication service is not configured'
+      });
     }
 
     // Get user from Supabase auth
